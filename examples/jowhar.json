@@ -1,0 +1,13 @@
+{
+  "type": "Feature",
+  "properties": {
+    "marker-symbol": "monument"
+  },
+  "geometry": {
+    "coordinates": [
+      45.512392385912506,
+      2.779053511521937
+    ],
+    "type": "Point"
+  }
+}

@@ -2,10 +2,15 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 import ee
 
-from lib.delineation import delineate_point
+from lib.delineation import delineate_point, delineate_points
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -24,6 +29,11 @@ app.add_middleware(
 )
 
 
+class Outlets(BaseModel):
+    type: str
+    features: list
+
+
 class EarthEngineMap(object):
 
     def __init__(self):
@@ -37,7 +47,7 @@ class EarthEngineMap(object):
     def get_earth_engine_map_tile_url(self, dataset, threshold, palette='0000FF'):
         ee_image = self.ee.Image(dataset)
         map_id = None
-        if dataset == 'WWF/HydroSHEDS/15ACC':
+        if dataset in ['WWF/HydroSHEDS/15ACC', 'WWF/HydroSHEDS/30ACC']:
             # real_threshold = pow(10, (100 - threshold) / 100 * 7.5)
             max_threshold = pow(5, (100 - threshold) / 100 * 7.5)
             # max_threshold = (100 - threshold) / 100 * 7.5
@@ -70,6 +80,13 @@ async def get_ee_tile(dataset: str, threshold: int):
 
 
 @app.get('/delineate')
-async def delineate(lat: float = 0, lon: float = 0, res: int = 30):
-    geojson = delineate_point(lat, lon, res=res)
+async def delineate(lat: float = None, lon: float = None, res: int = 30):
+    geojson = delineate_point(lon, lat, res=res)
+    return geojson
+
+
+@app.post('/delineate')
+async def delineate(res: int = 30, outlets: Outlets = None):
+    features = outlets.features
+    geojson = delineate_points(features, res=res)
     return geojson
