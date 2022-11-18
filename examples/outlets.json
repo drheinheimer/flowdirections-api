@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 1,
+        "marker-symbol": "monument"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.92009561422637,
+          38.537796656831745
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 2,
+        "marker-symbol": "monument"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.937096880414,
+          38.55443089724082
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 3,
+        "marker-symbol": "monument"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.9649337717338,
+          38.52057278069739
+        ]
+      }
+    }
+  ]
+}

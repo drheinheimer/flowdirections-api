@@ -2,8 +2,6 @@ import datetime as dt
 from lib.delineation import delineate_point, delineate_points
 import json
 
-from main import Outlets
-
 
 def test_delineate_point(lon, lat, res):
     print(f'testing lat={lat}, lon={lon}')

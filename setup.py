@@ -18,12 +18,14 @@ def download_extract_hydrosheds(region, data, res, dest='./data'):
     fdir_filename = filename_tpl.format(region=region, data=data, res=res, ext='zip')
     fdir_url = url_tpl.format(data=data, filename=fdir_filename)
 
-    print(f'Processing {fdir_url}')
     tif_name = filename_tpl.format(region=region, data=data, res=res, ext='tif')
     out_path = Path(dest, tif_name)
-    req = requests.get(fdir_url)
-    zf = zipfile.ZipFile(BytesIO(req.content))
-    zf.extract(tif_name, dest)
+
+    if not path.exists(out_path):
+        print(f'Processing {fdir_url}')
+        req = requests.get(fdir_url)
+        zf = zipfile.ZipFile(BytesIO(req.content))
+        zf.extract(tif_name, dest)
 
     return out_path
 
@@ -55,7 +57,6 @@ def mask_raster_to_vector(input_path):
 
 
 def process_region(region, dest):
-
     if not path.exists(dest):
         makedirs(dest)
 
@@ -69,15 +70,21 @@ def process_region(region, dest):
     tif_name = filename_tpl.format(region=region, data='msk', res=30, ext='tif')
     mask_path = Path(dest, tif_name)
     out_path = Path(dest, tif_name.replace('.tif', '.json'))
-    vector = mask_raster_to_vector(mask_path)
-    with open(out_path, 'w') as f:
-        f.write(json.dumps(vector))
+
+    if not path.exists(out_path):
+        vector = mask_raster_to_vector(mask_path)
+        with open(out_path, 'w') as f:
+            f.write(json.dumps(vector))
 
     return
 
 
-if __name__ == '__main__':
-    # regions = ['na', 'af', 'sa']
-    regions = ['as', 'eu']
+def initialize():
+    print('Initializing data...')
+    regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
     for region in regions:
         process_region(region, './data')
+
+
+if __name__ == '__main__':
+    initialize()
