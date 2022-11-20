@@ -5,3 +5,4 @@ venv
 .env
 instance
 __pycache__
+ee-credentials.json

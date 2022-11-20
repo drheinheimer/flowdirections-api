@@ -32,16 +32,22 @@ app.add_middleware(
 
 
 class EarthEngineMap(object):
+    ee = None
 
     def __init__(self):
         # ee.Authenticate()
-        service_account = os.environ['EE_SERVICE_ACCOUNT']
-        credentials_path = os.environ['EE_CREDENTIALS_PATH']
-        credentials = ee.ServiceAccountCredentials(service_account, credentials_path)
-        ee.Initialize(credentials)
-        self.ee = ee
+
+        service_account = os.environ.get('EE_SERVICE_ACCOUNT')
+        try:
+            credentials = ee.ServiceAccountCredentials(service_account, 'ee-credentials.json')
+            ee.Initialize(credentials)
+            self.ee = ee
+        except:
+            pass
 
     def get_earth_engine_map_tile_url(self, dataset, threshold, palette='0000FF'):
+        if not self.ee:
+            raise Exception('Earth Engine not initialized')
         ee_image = self.ee.Image(dataset)
         map_id = None
         if dataset in ['WWF/HydroSHEDS/15ACC', 'WWF/HydroSHEDS/30ACC']:
@@ -67,13 +73,16 @@ EEMap = EarthEngineMap()
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World!"}
+    return "<p>Hello, Hydrologist!</p>"
 
 
 @app.get('/ee_tile')
 async def get_ee_tile(dataset: str, threshold: int):
-    tile_url = EEMap.get_earth_engine_map_tile_url(dataset, threshold)
-    return tile_url
+    try:
+        tile_url = EEMap.get_earth_engine_map_tile_url(dataset, threshold)
+        return tile_url
+    except:
+        return 'Earth Engine not initialized'
 
 
 @app.get('/catchment')
