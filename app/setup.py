@@ -13,23 +13,22 @@ import rasterio.warp
 from loguru import logger
 
 filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
-url_tpl = 'https://data.hydrosheds.org/file/hydrosheds-v1-{data}/{filename}'
 
 
 def download_extract_hydrosheds(region, data, res, dest='./data'):
-    fdir_filename = filename_tpl.format(region=region, data=data, res=res, ext='zip')
-    fdir_url = url_tpl.format(data=data, filename=fdir_filename)
-
+    src_data_url = os.environ['DATA_HTTP_URI']
     tif_name = filename_tpl.format(region=region, data=data, res=res, ext='tif')
-    out_path = Path(dest, tif_name)
+    src_url = f'{src_data_url}/{tif_name}'
+    dst_path = Path(dest, tif_name)
 
-    if not os.path.exists(out_path):
-        print(f'Processing {fdir_url}')
-        req = requests.get(fdir_url)
-        zf = zipfile.ZipFile(BytesIO(req.content))
-        zf.extract(tif_name, dest)
+    if not os.path.exists(dst_path):
+        print(f'Processing {tif_name}')
+        req = requests.get(src_url)
 
-    return out_path
+        with open(dst_path, 'wb') as f:
+            f.write(req.content)
+
+    return dst_path
 
 
 def mask_raster_to_vector(input_path):

@@ -46,8 +46,9 @@ def get_regions(lon, lat):
 def get_region(lon, lat):
     regions = get_regions(lon, lat)
     point = Point(lon, lat)
+    data_dir = os.environ.get('DATA_DIR', './instance/data')
     for region in regions:
-        filename = f'./data/hyd_{region}_msk_30s.json'
+        filename = f'{data_dir}/hyd_{region}_msk_30s.json'
         with open(filename) as f:
             gj_str = f.read()
         gj_geom = shapely.from_geojson(gj_str)
