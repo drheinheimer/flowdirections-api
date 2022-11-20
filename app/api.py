@@ -1,4 +1,5 @@
 import os
+import json
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,9 +38,19 @@ class EarthEngineMap(object):
     def __init__(self):
         # ee.Authenticate()
 
-        service_account = os.environ.get('EE_SERVICE_ACCOUNT')
+        service_account = os.environ.get('EE_CLIENT_EMAIL')
+        ee_key_data = {
+            "type": "service_account",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        }
+        for var in os.environ:
+            if var[:3] == 'EE_':
+                ee_key_data[var[3:].lower()] = os.environ[var]
+
         try:
-            credentials = ee.ServiceAccountCredentials(service_account, 'ee-credentials.json')
+            credentials = ee.ServiceAccountCredentials(service_account, key_data=json.dumps(ee_key_data))
             ee.Initialize(credentials)
             self.ee = ee
         except:

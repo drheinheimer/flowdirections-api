@@ -1,4 +1,4 @@
-from os import path, makedirs
+import os
 from pathlib import Path
 from io import BytesIO
 import zipfile
@@ -9,6 +9,8 @@ import requests
 import rasterio
 import rasterio.features
 import rasterio.warp
+
+from loguru import logger
 
 filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
 url_tpl = 'https://data.hydrosheds.org/file/hydrosheds-v1-{data}/{filename}'
@@ -21,7 +23,7 @@ def download_extract_hydrosheds(region, data, res, dest='./data'):
     tif_name = filename_tpl.format(region=region, data=data, res=res, ext='tif')
     out_path = Path(dest, tif_name)
 
-    if not path.exists(out_path):
+    if not os.path.exists(out_path):
         print(f'Processing {fdir_url}')
         req = requests.get(fdir_url)
         zf = zipfile.ZipFile(BytesIO(req.content))
@@ -57,13 +59,13 @@ def mask_raster_to_vector(input_path):
 
 
 def process_region(region, dest):
-    if not path.exists(dest):
-        makedirs(dest)
+    if not os.path.exists(dest):
+        os.makedirs(dest)
 
     # extract direction grids
     for res in [15, 30]:
-        download_extract_hydrosheds(region, 'dir', res)
-        download_extract_hydrosheds(region, 'acc', res)
+        download_extract_hydrosheds(region, 'dir', res, dest=dest)
+        download_extract_hydrosheds(region, 'acc', res, dest=dest)
 
     # extract masks
     download_extract_hydrosheds(region, 'msk', 30, dest=dest)
@@ -71,7 +73,7 @@ def process_region(region, dest):
     mask_path = Path(dest, tif_name)
     out_path = Path(dest, tif_name.replace('.tif', '.json'))
 
-    if not path.exists(out_path):
+    if not os.path.exists(out_path):
         vector = mask_raster_to_vector(mask_path)
         with open(out_path, 'w') as f:
             f.write(json.dumps(vector))
@@ -80,10 +82,11 @@ def process_region(region, dest):
 
 
 def initialize():
-    print('Initializing data...')
+    logger.info('Initializing grid data...')
     regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
+    dest = os.environ.get('DATA_DIR', './instance/data')
     for region in regions:
-        process_region(region, './data')
+        process_region(region, dest)
 
 
 if __name__ == '__main__':

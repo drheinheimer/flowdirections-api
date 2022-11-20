@@ -1,6 +1,6 @@
 import uvicorn
 from app.api import app
-from setup import initialize
+from app.setup import initialize
 
 if __name__ == "__main__":
     initialize()

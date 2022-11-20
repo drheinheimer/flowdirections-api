@@ -1,3 +1,5 @@
+import os
+
 from itertools import combinations
 import json
 
@@ -11,7 +13,8 @@ import rasterio
 
 dirmap = (64, 128, 1, 2, 4, 8, 16, 32)
 
-tif_tpl = './data/hyd_{region}_{data}_{res}s.tif'
+data_dir = os.environ.get('DATA_DIR', './instance/data')
+tif_tpl = f'{data_dir}/hyd_{{region}}_{{data}}_{{res}}s.tif'
 
 
 class DirGrid(object):
