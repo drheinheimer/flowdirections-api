@@ -80,7 +80,7 @@ def process_region(region, dest):
         src_url = f'{src_data_url}/{mask_name}'
         req = requests.get(src_url)
         if req.ok:
-           vector = req.content
+            vector = req.content.decode()
         else:
             vector = mask_raster_to_vector(mask_path)
 
