@@ -70,11 +70,21 @@ def process_region(region, dest):
     download_extract_hydrosheds(region, 'msk', 30, dest=dest)
     tif_name = filename_tpl.format(region=region, data='msk', res=30, ext='tif')
     mask_path = Path(dest, tif_name)
-    out_path = Path(dest, tif_name.replace('.tif', '.json'))
 
-    if not os.path.exists(out_path):
-        vector = mask_raster_to_vector(mask_path)
-        with open(out_path, 'w') as f:
+    mask_name = tif_name.replace('.tif', '.json')
+    dst_path = Path(dest, mask_name)
+
+    if not os.path.exists(dst_path):
+
+        src_data_url = os.environ['DATA_HTTP_URI']
+        src_url = f'{src_data_url}/{mask_name}'
+        req = requests.get(src_url)
+        if req.ok:
+           vector = req.content
+        else:
+            vector = mask_raster_to_vector(mask_path)
+
+        with open(dst_path, 'w') as f:
             f.write(json.dumps(vector))
 
     return
