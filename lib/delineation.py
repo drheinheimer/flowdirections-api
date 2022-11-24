@@ -1,12 +1,12 @@
 import os
+import multiprocessing as mp
 
 from itertools import combinations
 import json
 
 import shapely
 from pysheds.grid import Grid
-import shapely.geometry as geom
-from shapely import union, union_all, to_geojson, Point
+from shapely import Point
 import fiona
 import numpy as np
 import rasterio
@@ -94,15 +94,11 @@ class Outlet(object):
         self.fdir = dirgrid.fdir
 
         if include_facc:
-            self.facc_path = tif_tpl.format(region=region, data='acc', res=res)
-
-    def get_facc(self):
-        x = self.lon
-        y = self.lat
-        with rasterio.open(self.facc_path) as dataset:
-            facc = list(dataset.sample([(x, y)]))[0][0]
-
-        return facc
+            facc_path = tif_tpl.format(region=region, data='acc', res=res)
+            x = self.lon
+            y = self.lat
+            with rasterio.open(facc_path) as dataset:
+                self.facc = list(dataset.sample([(x, y)]))[0][0]
 
     def delineate(self, output='geojson', stringify=False):
 
@@ -151,20 +147,30 @@ def delineate_point(lon, lat, res=30):
     return outlet.delineate()
 
 
-def delineate_points(features, res=30):
-    # step 1: create basic catchments
-    # TODO: parallelize this!!!
-    outlets = {}
-    for feature in features:
-        lon, lat = feature['geometry']['coordinates']
-        outlet = Outlet(lon, lat, res, include_facc=True)
-        catchment = outlet.delineate(output='shapely')
-        facc = outlet.get_facc()
-        outlets[(lon, lat)] = {
-            'catchment': catchment,
-            'facc': facc
-        }
+def _delineate_point(feature, res=30):
+    lon, lat = feature['geometry']['coordinates']
+    outlet = Outlet(lon, lat, res, include_facc=True)
+    catchment = outlet.delineate(output='shapely')
+    delineation = {
+        'coords': (lon, lat),
+        'catchment': catchment,
+        'facc': outlet.facc
+    }
+    return delineation
 
+
+def delineate_points(features, res=30, parallel=False):
+    # step 1: create basic catchments
+    if parallel:
+        pool = mp.Pool(processes=4)
+        delineations = pool.map(_delineate_point, features)
+    else:
+        delineations = []
+        for feature in features:
+            delineation = _delineate_point(feature, res=res)
+            delineations.append(delineation)
+
+    outlets = {d['coords']: d for d in delineations}
     catchment_combos = list(combinations(outlets.keys(), 2))
     for i, (p1, p2) in enumerate(catchment_combos):
         o1 = outlets.get(p1)
@@ -185,18 +191,28 @@ def delineate_points(features, res=30):
 
     features = []
     for outlet in outlets.values():
-        f_str = shapely.to_geojson(outlet['catchment'])
-        f = json.loads(f_str)
-        if f['type'] == 'GeometryCollection':
-            f['type'] = 'Feature'
-            f['geometry'] = f['geometries'][0]
-            f.pop('geometries')
-        elif f['type'] in ['Polygon', 'MultiPolygon']:
-            f = {
-                'type': 'Feature',
-                'geometry': f
-            }
-        features.append(f)
+        geom = outlet['catchment']
+        geom_type = geom.geom_type
+        if geom_type == 'GeometryCollection':
+            geometry = geom.geoms[0]  # TODO: check if this is valid
+        elif geom_type == 'Polygon':
+            geometry = geom
+        elif geom_type == 'MultiPolygon':
+            area_threshold = 1e-6  # TODO: confirm this threshold
+            geometries = [g for g in geom.geoms if g.area >= area_threshold]
+            if len(geometries) == 1:
+                geometry = geometries[0]
+            else:
+                geometry = geometries[0]
+        else:
+            raise Exception(f'Unsupported geometry: {geom_type}')
+
+        feature = {
+            'type': 'Feature',
+            'geometry': json.loads(shapely.to_geojson(geometry))
+        }
+
+        features.append(feature)
 
     geojson = {
         'type': 'FeatureCollection',

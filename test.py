@@ -26,7 +26,7 @@ if __name__ == '__main__':
     with open('./examples/outlets.json') as f:
         outlets = json.load(f)
     features = outlets['features']
-    result = delineate_points(features)
+    result = delineate_points(features, parallel=True)
 
     with open('catchments.json', 'w') as f:
         f.write(json.dumps(result, indent=2))
