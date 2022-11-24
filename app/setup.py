@@ -28,13 +28,6 @@ def download_extract_hydrosheds(region, data, res, dest='./data'):
         with open(dst_path, 'wb') as f:
             f.write(req.content)
 
-        total, used, free = shutil.disk_usage("/")
-
-        print("Total storage: %d GiB" % (total // (2 ** 30)))
-        print("Used storage: %d GiB" % (used // (2 ** 30)))
-        print("Free storage: %d GiB" % (free // (2 ** 30)))
-
-
     return dst_path
 
 

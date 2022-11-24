@@ -1,7 +1,8 @@
 import os
+import shutil
 import multiprocessing as mp
 
-from itertools import combinations
+from itertools import combinations, product
 import json
 
 import shapely
@@ -10,6 +11,11 @@ from shapely import Point
 import fiona
 import numpy as np
 import rasterio
+import requests
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 dirmap = (64, 128, 1, 2, 4, 8, 16, 32)
 
@@ -24,23 +30,59 @@ class DirGrid(object):
         self.fdir = self.grid.read_raster(fdir_tif)
 
 
+class DirGrids(object):
+    grids = {}
+    fdirs = {}
+
+    filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
+
+    def __init__(self, regions, resolutions):
+        for region, res in product(regions, resolutions):
+            fdir_tif = tif_tpl.format(region=region, data='dir', res=res)
+            key = (region, res)
+            print(f'Loading {region}, {res}s')
+            fname = self.filename_tpl.format(region=region, data='dir', res=res, ext='tif')
+            if os.environ.get('DEPLOYMENT_MODE') == 'production':
+                data_http_uri = os.environ.get('DATA_HTTP_URI')
+                url = f'{data_http_uri}/{fname}'
+                req = requests.get(url)
+                with open(fname, 'wb') as f:
+                    f.write(req.content)
+                grid = Grid.from_raster(fname)
+                fdir = grid.read_raster(fname)
+                os.remove(fname)
+            else:
+                data_path = os.environ.get('DATA_PATH')
+                raster_path = f'{data_path}/{fname}'
+                grid = Grid.from_raster(raster_path)
+                fdir = grid.read_raster(raster_path)
+
+            self.grids[key] = grid
+            self.fdirs[key] = fdir
+
+
+# _regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
+_regions = ['na']
+_resolutions = [15, 30]
+
+grids = DirGrids(_regions, _resolutions)
+
+
 def get_regions(lon, lat):
     if 90 < lon < 190 and lat < 8:  # prioritize Australia
-        regions = ['au', 'as']
+        return ['au', 'as']
     elif 57 < lon < 155 and 7 < lat < 55:  # prioritize Asia
-        regions = ['as', 'eu', 'au']
+        return ['as', 'eu', 'au']
     elif -30 < lon < 55 and lat < 35:  # prioritize Africa
-        regions = ['af', 'eu']
+        return ['af', 'eu']
     elif -25 < lon < 70 and 12 < lat:  # prioritize Europe
-        regions = ['eu', 'af', 'as']
+        return ['eu', 'af', 'as']
     elif -82 < lon < -34 and lat < 15:
-        regions = ['sa', 'na']
+        return ['sa', 'na']
     elif -140 < lon < -52 and 7 < lat < 62:
-        regions = ['na', 'sa']
+        return ['na', 'sa']
     else:
-        regions = ['na', 'sa', 'eu', 'af', 'as', 'au']
-
-    return regions
+        return ['na', 'sa', 'eu', 'af', 'as', 'au']
 
 
 def get_region(lon, lat):
@@ -89,9 +131,9 @@ class Outlet(object):
         self.lon = lon
         self.lat = lat
         region = get_region(lon, lat)
-        dirgrid = DirGrid(res, region)
-        self.grid = dirgrid.grid
-        self.fdir = dirgrid.fdir
+        key = (region, res)
+        self.grid = DirGrids.grids[key]
+        self.fdir = DirGrids.fdirs[key]
 
         if include_facc:
             facc_path = tif_tpl.format(region=region, data='acc', res=res)
