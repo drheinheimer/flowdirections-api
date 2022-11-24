@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
-from io import BytesIO
-import zipfile
 import json
+import shutil
 
 import requests
 
@@ -23,10 +22,18 @@ def download_extract_hydrosheds(region, data, res, dest='./data'):
 
     if not os.path.exists(dst_path):
         print(f'Processing {tif_name}')
+
         req = requests.get(src_url)
 
         with open(dst_path, 'wb') as f:
             f.write(req.content)
+
+        total, used, free = shutil.disk_usage("/")
+
+        print("Total storage: %d GiB" % (total // (2 ** 30)))
+        print("Used storage: %d GiB" % (used // (2 ** 30)))
+        print("Free storage: %d GiB" % (free // (2 ** 30)))
+
 
     return dst_path
 
