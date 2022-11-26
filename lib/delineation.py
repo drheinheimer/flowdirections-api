@@ -61,8 +61,7 @@ class DirGrids(object):
             self.fdirs[key] = fdir
 
 
-# _regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
-_regions = ['na']
+_regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
 _resolutions = [15, 30]
 
 grids = DirGrids(_regions, _resolutions)
