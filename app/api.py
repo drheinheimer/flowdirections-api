@@ -40,7 +40,7 @@ delineator = Delineator(_regions, _resolutions)
 
 @app.get("/")
 async def root():
-    return "<p>Hello, Hydrologist!</p>"
+    return "Hello, Hydrologist!"
 
 
 @app.get('/ee_tile')
