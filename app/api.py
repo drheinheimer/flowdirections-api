@@ -15,9 +15,14 @@ app = FastAPI(title='RapidSHEDS',
               description='A catchment delineation API based on HydroSHEDS + Pysheds',
               version='0.0.1')
 
-if os.environ.get('DEPLOYMENT_MODE') == 'production':
+deployment_mode = os.environ.get('DEPLOYMENT_MODE', 'development')
+print(deployment_mode)
+if deployment_mode == 'production':
     # TODO: update to allow get requests from anywhere
-    origins = [os.environ.get('ALLOWED_ORIGIN')]
+    allowed_origin = os.environ.get('ALLOWED_ORIGIN')
+    if not allowed_origin:
+        raise Exception('Environment variable ALLOWED_ORIGIN not specified')
+    origins = [allowed_origin]
 else:
     origins = ["http://localhost:3000"]
 
