@@ -72,6 +72,10 @@ class Delineator(object):
         production = os.environ.get('DEPLOYMENT_MODE') == 'production'
 
         for region, res, data_type in product(regions, resolutions, ['dir', 'acc', 'msk']):
+
+            if data_type == 'msk' and res == 15:
+                continue
+
             print(f'Loading {data_type} for {region}, {res}s')
 
             data_dir = os.environ.get('DATA_DIR')
@@ -87,7 +91,7 @@ class Delineator(object):
                 url = f'{data_http_uri}/{fname}'
                 req = requests.get(url)
                 with open(fpath, mode) as f:
-                    f.write(req.content)
+                    f.write(req.content if mode == 'wb' else req.content.decode())
 
             key = (region, res)
             if data_type == 'dir':
