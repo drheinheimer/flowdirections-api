@@ -49,4 +49,3 @@ class EarthEngineMap(object):
 
         tile_url = map_id['tile_fetcher'].url_format
         return tile_url
-

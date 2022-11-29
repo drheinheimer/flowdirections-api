@@ -1,70 +1,22 @@
 import os
-import shutil
+from copy import copy
 import multiprocessing as mp
-
-from itertools import combinations, product
 import json
+import requests
+from itertools import product, combinations
+from functools import partial
 
-import shapely
 from pysheds.grid import Grid
+import shapely
 from shapely import Point
 import fiona
 import numpy as np
 import rasterio
-import requests
-
-from dotenv import load_dotenv
-
-load_dotenv()
 
 dirmap = (64, 128, 1, 2, 4, 8, 16, 32)
 
 data_dir = os.environ.get('DATA_DIR', './instance/data')
 tif_tpl = f'{data_dir}/hyd_{{region}}_{{data}}_{{res}}s.tif'
-
-
-class DirGrid(object):
-    def __init__(self, res, region):
-        fdir_tif = tif_tpl.format(region=region, data='dir', res=res)
-        self.grid = Grid.from_raster(fdir_tif)
-        self.fdir = self.grid.read_raster(fdir_tif)
-
-
-class DirGrids(object):
-    grids = {}
-    fdirs = {}
-
-    filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
-
-    def __init__(self, regions, resolutions):
-        for region, res in product(regions, resolutions):
-            fdir_tif = tif_tpl.format(region=region, data='dir', res=res)
-            key = (region, res)
-            print(f'Loading {region}, {res}s')
-            fname = self.filename_tpl.format(region=region, data='dir', res=res, ext='tif')
-            if os.environ.get('DEPLOYMENT_MODE') == 'production':
-                data_http_uri = os.environ.get('DATA_HTTP_URI')
-                url = f'{data_http_uri}/{fname}'
-                req = requests.get(url)
-                with open(fname, 'wb') as f:
-                    f.write(req.content)
-                grid = Grid.from_raster(fname)
-                fdir = grid.read_raster(fname)
-                os.remove(fname)
-            else:
-                data_path = os.environ.get('DATA_PATH')
-                raster_path = f'{data_path}/{fname}'
-                grid = Grid.from_raster(raster_path)
-                fdir = grid.read_raster(raster_path)
-
-            self.grids[key] = grid
-            self.fdirs[key] = fdir
-
-
-_regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
-_resolutions = [15, 30]
-
-grids = DirGrids(_regions, _resolutions)
 
 
 def get_regions(lon, lat):
@@ -82,22 +34,6 @@ def get_regions(lon, lat):
         return ['na', 'sa']
     else:
         return ['na', 'sa', 'eu', 'af', 'as', 'au']
-
-
-def get_region(lon, lat):
-    regions = get_regions(lon, lat)
-    point = Point(lon, lat)
-    data_dir = os.environ.get('DATA_DIR', './instance/data')
-    for region in regions:
-        filename = f'{data_dir}/hyd_{region}_msk_30s.json'
-        with open(filename) as f:
-            gj_str = f.read()
-        gj_geom = shapely.from_geojson(gj_str)
-
-        if shapely.contains(gj_geom, point):
-            return region
-
-    raise 'No region found'
 
 
 def shapes_to_geojson(shapes, stringify=False):
@@ -124,31 +60,67 @@ def shapes_to_geojson(shapes, stringify=False):
     return geojson
 
 
-class Outlet(object):
+class Delineator(object):
+    filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
 
-    def __init__(self, lon, lat, res, include_facc=False):
-        self.lon = lon
-        self.lat = lat
-        region = get_region(lon, lat)
+    def __init__(self, regions, resolutions):
+        self.grids = {}
+        self.fdirs = {}
+        self.faccs = {}
+        self.masks = {}
+
+        production = os.environ.get('DEPLOYMENT_MODE') == 'production'
+
+        for region, res, data_type in product(regions, resolutions, ['dir', 'acc', 'msk']):
+            print(f'Loading {data_type} for {region}, {res}s')
+
+            data_dir = os.environ.get('DATA_DIR')
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+            ext = 'json' if data_type == 'msk' else 'tif'
+            mode = 'w' if data_type == 'msk' else 'wb'
+            fname = self.filename_tpl.format(region=region, data=data_type, res=res, ext=ext)
+            fpath = f'{data_dir}/{fname}'
+
+            if production:
+                data_http_uri = os.environ.get('DATA_HTTP_URI')
+                url = f'{data_http_uri}/{fname}'
+                req = requests.get(url)
+                with open(fpath, mode) as f:
+                    f.write(req.content)
+
+            key = (region, res)
+            if data_type == 'dir':
+                self.grids[key] = grid = Grid.from_raster(fpath)
+                self.fdirs[key] = grid.read_raster(fpath)
+
+    def get_region(self, lon, lat):
+        regions = get_regions(lon, lat)
+        point = Point(lon, lat)
+        data_dir = os.environ.get('DATA_DIR', './instance/data')
+        for region in regions:
+            filename = f'{data_dir}/hyd_{region}_msk_30s.json'
+            with open(filename) as f:
+                gj_str = f.read()
+            gj_geom = shapely.from_geojson(gj_str)
+
+            if shapely.contains(gj_geom, point):
+                return region
+
+        raise 'No region found'
+
+    def delineate_point(self, lon, lat, res=30, output='geojson', region=None, stringify=False):
+        region = region or self.get_region(lon, lat)
         key = (region, res)
-        self.grid = DirGrids.grids[key]
-        self.fdir = DirGrids.fdirs[key]
+        grid = copy(self.grids[key])
+        fdir = copy(self.fdirs[key])
 
-        if include_facc:
-            facc_path = tif_tpl.format(region=region, data='acc', res=res)
-            x = self.lon
-            y = self.lat
-            with rasterio.open(facc_path) as dataset:
-                self.facc = list(dataset.sample([(x, y)]))[0][0]
+        catchment = grid.catchment(x=lon, y=lat, fdir=fdir, dirmap=dirmap, snap='center')
 
-    def delineate(self, output='geojson', stringify=False):
+        grid.clip_to(catchment)
+        catch_view = grid.view(catchment, dtype=np.uint8)
 
-        catchment = self.grid.catchment(x=self.lon, y=self.lat, fdir=self.fdir, dirmap=dirmap, snap='center')
-
-        self.grid.clip_to(catchment)
-        catch_view = self.grid.view(catchment, dtype=np.uint8)
-
-        shapes = self.grid.polygonize(catch_view)
+        shapes = grid.polygonize(catch_view)
 
         if output == 'native':
             return shapes
@@ -164,7 +136,7 @@ class Outlet(object):
             # Write shapefile
             with fiona.open('catchment.shp', 'w',
                             driver='ESRI Shapefile',
-                            crs=self.grid.crs.srs,
+                            crs=grid.crs.srs,
                             schema=schema) as c:
                 i = 0
                 for shape, value in shapes:
@@ -182,82 +154,84 @@ class Outlet(object):
             geojson = shapes_to_geojson(shapes, stringify=True)
             return shapely.from_geojson(geojson)
 
+    def get_facc(self, lon, lat, region, res):
+        facc_path = tif_tpl.format(region=region, data='acc', res=res)
+        x = lon
+        y = lat
+        with rasterio.open(facc_path) as dataset:
+            facc = list(dataset.sample([(x, y)]))[0][0]
+        return facc
 
-def delineate_point(lon, lat, res=30):
-    outlet = Outlet(lon, lat, res)
-    return outlet.delineate()
+    def _delineate_point(self, feature, res=30):
+        lon, lat = feature['geometry']['coordinates']
+        region = self.get_region(lon, lat)
+        catchment = self.delineate_point(lon, lat, res=res, region=region, output='shapely')
+        delineation = {
+            'coords': (lon, lat),
+            'catchment': catchment,
+            'facc': self.get_facc(lon, lat, region, res)
+        }
+        return delineation
 
-
-def _delineate_point(feature, res=30):
-    lon, lat = feature['geometry']['coordinates']
-    outlet = Outlet(lon, lat, res, include_facc=True)
-    catchment = outlet.delineate(output='shapely')
-    delineation = {
-        'coords': (lon, lat),
-        'catchment': catchment,
-        'facc': outlet.facc
-    }
-    return delineation
-
-
-def delineate_points(features, res=30, parallel=False):
-    # step 1: create basic catchments
-    if parallel:
-        pool = mp.Pool(processes=4)
-        delineations = pool.map(_delineate_point, features)
-    else:
-        delineations = []
-        for feature in features:
-            delineation = _delineate_point(feature, res=res)
-            delineations.append(delineation)
-
-    outlets = {d['coords']: d for d in delineations}
-    catchment_combos = list(combinations(outlets.keys(), 2))
-    for i, (p1, p2) in enumerate(catchment_combos):
-        o1 = outlets.get(p1)
-        o2 = outlets.get(p2)
-        if not (o1 and o2):
-            continue
-        c1 = o1['catchment']
-        c2 = o2['catchment']
-        if not shapely.intersects(c1, c2):
-            continue
-
-        if o1['facc'] > o2['facc']:
-            c1_new = shapely.difference(c1, c2)
-            outlets[p1]['catchment'] = c1_new
-        elif o1['facc'] < o2['facc']:
-            c2_new = shapely.difference(c2, c1)
-            outlets[p2]['catchment'] = c2_new
-
-    features = []
-    for outlet in outlets.values():
-        geom = outlet['catchment']
-        geom_type = geom.geom_type
-        if geom_type == 'GeometryCollection':
-            geometry = geom.geoms[0]  # TODO: check if this is valid
-        elif geom_type == 'Polygon':
-            geometry = geom
-        elif geom_type == 'MultiPolygon':
-            area_threshold = 1e-6  # TODO: confirm this threshold
-            geometries = [g for g in geom.geoms if g.area >= area_threshold]
-            if len(geometries) == 1:
-                geometry = geometries[0]
-            else:
-                geometry = geometries[0]
+    def delineate_points(self, features, res=30, parallel=False):
+        # step 1: create basic catchments
+        if parallel:
+            pool = mp.Pool(processes=4)
+            func = partial(self._delineate_point, res=30)
+            delineations = pool.map(func, features)
         else:
-            raise Exception(f'Unsupported geometry: {geom_type}')
+            delineations = []
+            for feature in features:
+                delineation = self._delineate_point(feature, res=res)
+                delineations.append(delineation)
 
-        feature = {
-            'type': 'Feature',
-            'geometry': json.loads(shapely.to_geojson(geometry))
+        outlets = {d['coords']: d for d in delineations}
+        catchment_combos = list(combinations(outlets.keys(), 2))
+        for i, (p1, p2) in enumerate(catchment_combos):
+            o1 = outlets.get(p1)
+            o2 = outlets.get(p2)
+            if not (o1 and o2):
+                continue
+            c1 = o1['catchment']
+            c2 = o2['catchment']
+            if not shapely.intersects(c1, c2):
+                continue
+
+            if o1['facc'] > o2['facc']:
+                c1_new = shapely.difference(c1, c2)
+                outlets[p1]['catchment'] = c1_new
+            elif o1['facc'] < o2['facc']:
+                c2_new = shapely.difference(c2, c1)
+                outlets[p2]['catchment'] = c2_new
+
+        features = []
+        for outlet in outlets.values():
+            geom = outlet['catchment']
+            geom_type = geom.geom_type
+            if geom_type == 'GeometryCollection':
+                geometry = geom.geoms[0]  # TODO: check if this is valid
+            elif geom_type == 'Polygon':
+                geometry = geom
+            elif geom_type == 'MultiPolygon':
+                area_threshold = 1e-6  # TODO: confirm this threshold
+                geometries = [g for g in geom.geoms if g.area >= area_threshold]
+                if len(geometries) == 1:
+                    geometry = geometries[0]
+                else:
+                    geometry = geometries[0]
+            else:
+                raise Exception(f'Unsupported geometry: {geom_type}')
+
+            feature = {
+                'type': 'Feature',
+                'geometry': json.loads(shapely.to_geojson(geometry))
+            }
+
+            features.append(feature)
+
+        geojson = {
+            'type': 'FeatureCollection',
+            'features': features
         }
 
-        features.append(feature)
-
-    geojson = {
-        'type': 'FeatureCollection',
-        'features': features
-    }
-
-    return geojson
+        return geojson

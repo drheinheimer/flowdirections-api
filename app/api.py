@@ -1,7 +1,9 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from lib.delineation import delineate_point, delineate_points
+from lib.delineation import Delineator
 from app.model import Outlets
 from app.helpers import EarthEngineMap
 
@@ -13,11 +15,11 @@ app = FastAPI(title='RapidSHEDS',
               description='A catchment delineation API based on HydroSHEDS + Pysheds',
               version='0.0.1')
 
-origins = [
-    "https://rapidsheds.io",
-    "http://localhost",
-    "http://localhost:3000",
-]
+if os.environ.get('DEPLOYMENT_MODE') == 'production':
+    # TODO: update to allow get requests from anywhere
+    origins = [os.environ.get('ALLOWED_ORIGIN')]
+else:
+    origins = ["http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,6 +30,12 @@ app.add_middleware(
 )
 
 EEMap = EarthEngineMap()
+
+# _regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
+_regions = ['na']
+_resolutions = [15, 30]
+
+delineator = Delineator(_regions, _resolutions)
 
 
 @app.get("/")
@@ -46,18 +54,18 @@ async def get_ee_tile(dataset: str, threshold: int):
 
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30):
-    geojson = delineate_point(lon, lat, res=res)
+    geojson = delineator.delineate_point(lon, lat, res=res)
     return geojson
 
 
 @app.post('/delineate_catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30):
-    geojson = delineate_point(lon, lat, res=res)
+    geojson = delineator.delineate_point(lon, lat, res=res)
     return geojson
 
 
 @app.post('/delineate_catchments')
 async def delineate(res: int = 30, outlets: Outlets = None):
     features = outlets.features
-    geojson = delineate_points(features, res=res, parallel=True)
+    geojson = delineator.delineate_points(features, res=res, parallel=True)
     return geojson
