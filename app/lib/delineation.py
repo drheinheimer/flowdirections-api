@@ -6,12 +6,16 @@ import requests
 from itertools import product, combinations
 from functools import partial
 
+import logging
+
 from pysheds.grid import Grid
 import shapely
 from shapely import Point
 import fiona
 import numpy as np
 import rasterio
+
+logging.basicConfig(level=logging.INFO)
 
 dirmap = (64, 128, 1, 2, 4, 8, 16, 32)
 
@@ -76,7 +80,7 @@ class Delineator(object):
             if data_type == 'msk' and res == 15:
                 continue
 
-            print(f'Loading {data_type} for {region}, {res}s')
+            logging.info(f'Loading {data_type} for {region}, {res}s')
 
             data_dir = os.environ.get('DATA_DIR')
             if not os.path.exists(data_dir):
