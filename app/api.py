@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from lib.delineation import Delineator
+from app.lib.delineation import Delineator
 from app.model import Outlets
 from app.helpers import EarthEngineMap
 

@@ -1,5 +1,5 @@
 import datetime as dt
-from lib.delineation import Delineator
+from app.lib.delineation import Delineator
 import json
 
 from dotenv import load_dotenv
