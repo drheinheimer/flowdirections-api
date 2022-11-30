@@ -27,9 +27,8 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[allowed_origin],
-    allow_credentials=True,
     allow_methods=['*'],
-    allow_headers=["*"],
+    allow_headers=['*'],
 )
 
 EEMap = EarthEngineMap()
