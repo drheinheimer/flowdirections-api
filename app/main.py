@@ -58,10 +58,10 @@ async def get_ee_tile(dataset: str, threshold: int):
 async def delineate(lat: float = None, lon: float = None, res: int = 30):
     try:
         geojson = delineator.delineate_point(lon, lat, res=res)
+        print(geojson)
         return geojson
     except:
         return 'Uh-oh!'
-
 
 
 @app.post('/delineate_catchment')
