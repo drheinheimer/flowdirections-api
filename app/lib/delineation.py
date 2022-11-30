@@ -90,7 +90,7 @@ class Delineator(object):
             fname = self.filename_tpl.format(region=region, data=data_type, res=res, ext=ext)
             fpath = f'{data_dir}/{fname}'
 
-            if production:
+            if production and not os.path.exists(fpath):
                 data_http_uri = os.environ.get('DATA_HTTP_URI')
                 url = f'{data_http_uri}/{fname}'
                 req = requests.get(url)
