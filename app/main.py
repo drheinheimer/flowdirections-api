@@ -19,17 +19,17 @@ deployment_mode = os.environ.get('DEPLOYMENT_MODE', 'development')
 print(deployment_mode)
 if deployment_mode == 'production':
     # TODO: update to allow get requests from anywhere
-    allowed_origin = os.environ.get('ALLOWED_ORIGIN')
-    if not allowed_origin:
+    allowed_origins = ['https://flowdirections.io', 'https://www.flowdirections.io', 'https://api.flowdirections.io']
+    if not allowed_origins:
         raise Exception('Environment variable ALLOWED_ORIGIN not specified')
 else:
-    allowed_origin = "http://localhost:3000"
+    allowed_origins = ['http://localhost:3000']
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[allowed_origin],
+    allow_origins=allowed_origins,
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=['POST', 'GET'],
     allow_headers=["*"],
 )
 
