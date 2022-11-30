@@ -27,7 +27,7 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=['POST', 'GET', 'OPTIONS'],
     allow_headers=["*"],
 )
@@ -66,7 +66,7 @@ async def delineate(lat: float = None, lon: float = None, res: int = 30):
 
 
 @app.post('/delineate_catchment')
-async def delineate(lat: float = None, lon: float = None, res: int = 30):
+async def delineate_catchment(lat: float = None, lon: float = None, res: int = 30):
     try:
         geojson = delineator.delineate_point(lon, lat, res=res)
         return geojson
@@ -75,7 +75,7 @@ async def delineate(lat: float = None, lon: float = None, res: int = 30):
 
 
 @app.post('/delineate_catchments')
-async def delineate(res: int = 30, outlets: Outlets = None):
+async def delineate_catchments(res: int = 30, outlets: Outlets = None):
     features = outlets.features
     geojson = delineator.delineate_points(features, res=res, parallel=True)
     return geojson
