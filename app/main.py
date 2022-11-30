@@ -18,17 +18,17 @@ app = FastAPI(title='flowdirections.io',
 deployment_mode = os.environ.get('DEPLOYMENT_MODE', 'development')
 print(deployment_mode)
 if deployment_mode == 'production':
-    allowed_origins = ['https://flowdirections.io', 'https://www.flowdirections.io', 'https://api.flowdirections.io']
-    if not allowed_origins:
+    allowed_origin = os.environ.get('ALLOWED_ORIGIN')
+    if not allowed_origin:
         raise Exception('Environment variable ALLOWED_ORIGIN not specified')
 else:
-    allowed_origins = ['http://localhost:3000']
+    allowed_origin = 'http://localhost:3000'
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[allowed_origin],
     allow_credentials=True,
-    allow_methods=['POST', 'GET', 'OPTIONS'],
+    allow_methods=['*'],
     allow_headers=["*"],
 )
 

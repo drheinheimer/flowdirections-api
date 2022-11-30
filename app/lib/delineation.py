@@ -129,7 +129,6 @@ class Delineator(object):
         catch_view = grid.view(catchment, dtype=np.uint8)
 
         shapes = grid.polygonize(catch_view)
-        print(shapes)
 
         if output == 'native':
             return shapes
