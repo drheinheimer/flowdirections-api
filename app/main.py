@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title='flowdirections',
+app = FastAPI(title='flowdirections.io',
               description='A catchment delineation API based on HydroSHEDS + Pysheds',
               version='0.0.1')
 
