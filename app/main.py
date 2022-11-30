@@ -63,8 +63,11 @@ async def delineate(lat: float = None, lon: float = None, res: int = 30):
 
 @app.post('/delineate_catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30):
-    geojson = delineator.delineate_point(lon, lat, res=res)
-    return geojson
+    try:
+        geojson = delineator.delineate_point(lon, lat, res=res)
+        return geojson
+    except:
+        return 'Uh-oh!'
 
 
 @app.post('/delineate_catchments')
