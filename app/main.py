@@ -22,14 +22,13 @@ if deployment_mode == 'production':
     allowed_origin = os.environ.get('ALLOWED_ORIGIN')
     if not allowed_origin:
         raise Exception('Environment variable ALLOWED_ORIGIN not specified')
-    origins = [allowed_origin]
 else:
-    origins = ["http://localhost:3000"]
+    allowed_origin = "http://localhost:3000"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=[allowed_origin],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
