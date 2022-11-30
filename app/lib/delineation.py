@@ -118,12 +118,10 @@ class Delineator(object):
         raise 'No region found'
 
     def delineate_point(self, lon, lat, res=30, output='geojson', region=None, stringify=False):
-        print('Delineating point...')
         region = region or self.get_region(lon, lat)
         key = (region, res)
         grid = copy(self.grids[key])
         fdir = copy(self.fdirs[key])
-        print('Grids copied...')
 
         catchment = grid.catchment(x=lon, y=lat, fdir=fdir, dirmap=dirmap, snap='center')
 
@@ -131,6 +129,7 @@ class Delineator(object):
         catch_view = grid.view(catchment, dtype=np.uint8)
 
         shapes = grid.polygonize(catch_view)
+        print(shapes)
 
         if output == 'native':
             return shapes
