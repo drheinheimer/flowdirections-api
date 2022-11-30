@@ -18,7 +18,6 @@ app = FastAPI(title='flowdirections',
 deployment_mode = os.environ.get('DEPLOYMENT_MODE', 'development')
 print(deployment_mode)
 if deployment_mode == 'production':
-    # TODO: update to allow get requests from anywhere
     allowed_origins = ['https://flowdirections.io', 'https://www.flowdirections.io', 'https://api.flowdirections.io']
     if not allowed_origins:
         raise Exception('Environment variable ALLOWED_ORIGIN not specified')
