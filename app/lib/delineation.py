@@ -166,10 +166,8 @@ class Delineator(object):
     def get_facc(self, lon, lat, region, res):
         facc_fname = self.filename_tpl.format(region=region, data='acc', res=res, ext='tif')
         facc_path = f'{data_dir}/{facc_fname}'
-        x = lon
-        y = lat
         with rasterio.open(facc_path) as dataset:
-            facc = list(dataset.sample([(x, y)]))[0][0]
+            facc = list(dataset.sample([(lon, lat)]))[0][0]
         return facc
 
     def _delineate_point(self, feature, res=30):
