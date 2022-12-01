@@ -31,10 +31,7 @@ class Test(object):
         features = outlets['features']
         result = self.delineator.delineate_points(features, parallel=False)
 
-        # with open('catchments.json', 'w') as f:
-        #     f.write(json.dumps(result, indent=2))
-
-        assert(len(result.get('features')) > 0)
+        assert('FeatureCollection' in result)
 
 
 if __name__ == '__main__':
