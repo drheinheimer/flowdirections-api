@@ -164,7 +164,8 @@ class Delineator(object):
             return shapely.from_geojson(geojson)
 
     def get_facc(self, lon, lat, region, res):
-        facc_path = self.filename_tpl.format(region=region, data='acc', res=res, ext='tif')
+        facc_fname = self.filename_tpl.format(region=region, data='acc', res=res, ext='tif')
+        facc_path = f'{data_dir}/{facc_fname}'
         x = lon
         y = lat
         with rasterio.open(facc_path) as dataset:
