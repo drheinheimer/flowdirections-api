@@ -72,5 +72,5 @@ async def delineate_catchment(lat: float = None, lon: float = None, res: int = 3
 @app.post('/delineate_catchments')
 async def delineate_catchments(res: int = 30, outlets: Outlets = None):
     features = outlets.features
-    geojson = delineator.delineate_points(features, res=res, parallel=True)
+    geojson = delineator.delineate_points(features, res=res, parallel=False)
     return geojson
