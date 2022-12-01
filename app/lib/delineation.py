@@ -97,10 +97,10 @@ class Delineator(object):
                 with open(fpath, mode) as f:
                     f.write(req.content if mode == 'wb' else req.content.decode())
 
-            key = (region, res)
-            if data_type == 'dir':
-                self.grids[key] = grid = Grid.from_raster(fpath)
-                self.fdirs[key] = grid.read_raster(fpath)
+            # key = (region, res)
+            # if data_type == 'dir':
+            #     self.grids[key] = grid = Grid.from_raster(fpath)
+            #     self.fdirs[key] = grid.read_raster(fpath)
 
     def get_region(self, lon, lat):
         regions = get_regions(lon, lat)
@@ -120,8 +120,13 @@ class Delineator(object):
     def delineate_point(self, lon, lat, res=30, output='geojson', region=None, stringify=False):
         region = region or self.get_region(lon, lat)
         key = (region, res)
-        grid = copy(self.grids[key])
-        fdir = copy(self.fdirs[key])
+        # grid = copy(self.grids[key])
+        # fdir = copy(self.fdirs[key])
+        data_dir = os.environ.get('DATA_DIR')
+        fname = self.filename_tpl.format(region=region, data='dir', res=res, ext='tif')
+        fpath = f'{data_dir}/{fname}'
+        grid = Grid.from_raster(fpath)
+        fdir = grid.read_raster(fpath)
 
         catchment = grid.catchment(x=lon, y=lat, fdir=fdir, dirmap=dirmap, snap='center')
 
