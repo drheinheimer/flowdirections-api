@@ -82,7 +82,6 @@ class Delineator(object):
 
             logging.info(f'Loading {data_type} for {region}, {res}s')
 
-            data_dir = os.environ.get('DATA_DIR')
             if not os.path.exists(data_dir):
                 os.makedirs(data_dir)
             ext = 'json' if data_type == 'msk' else 'tif'
@@ -105,7 +104,6 @@ class Delineator(object):
     def get_region(self, lon, lat):
         regions = get_regions(lon, lat)
         point = Point(lon, lat)
-        data_dir = os.environ.get('DATA_DIR', './instance/data')
         for region in regions:
             filename = f'{data_dir}/hyd_{region}_msk_30s.json'
             with open(filename) as f:
@@ -122,7 +120,6 @@ class Delineator(object):
         key = (region, res)
         # grid = copy(self.grids[key])
         # fdir = copy(self.fdirs[key])
-        data_dir = os.environ.get('DATA_DIR')
         fname = self.filename_tpl.format(region=region, data='dir', res=res, ext='tif')
         fpath = f'{data_dir}/{fname}'
         grid = Grid.from_raster(fpath)
