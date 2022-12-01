@@ -31,7 +31,7 @@ class Test(object):
         features = outlets['features']
         result = self.delineator.delineate_points(features, parallel=False)
 
-        assert('FeatureCollection' in result)
+        assert('type' in result and result['type'] == 'FeatureCollection')
 
 
 if __name__ == '__main__':
