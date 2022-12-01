@@ -33,8 +33,8 @@ app.add_middleware(
 
 EEMap = EarthEngineMap()
 
-# _regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
-_regions = ['na']
+_regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
+# _regions = ['na']
 _resolutions = [15, 30]
 
 delineator = Delineator(_regions, _resolutions)
