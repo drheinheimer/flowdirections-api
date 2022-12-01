@@ -20,7 +20,6 @@ logging.basicConfig(level=logging.INFO)
 dirmap = (64, 128, 1, 2, 4, 8, 16, 32)
 
 data_dir = os.environ.get('DATA_DIR', './instance/data')
-tif_tpl = f'{data_dir}/hyd_{{region}}_{{data}}_{{res}}s.tif'
 
 
 def get_regions(lon, lat):
@@ -165,7 +164,7 @@ class Delineator(object):
             return shapely.from_geojson(geojson)
 
     def get_facc(self, lon, lat, region, res):
-        facc_path = tif_tpl.format(region=region, data='acc', res=res)
+        facc_path = self.filename_tpl.format(region=region, data='acc', res=res, ext='tif')
         x = lon
         y = lat
         with rasterio.open(facc_path) as dataset:
