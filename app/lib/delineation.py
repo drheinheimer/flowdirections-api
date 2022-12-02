@@ -17,8 +17,6 @@ import rasterio
 
 logging.basicConfig(level=logging.INFO)
 
-dirmap = (64, 128, 1, 2, 4, 8, 16, 32)
-
 data_dir = os.environ.get('DATA_DIR', './instance/data')
 
 
@@ -124,7 +122,7 @@ class Delineator(object):
         grid = Grid.from_raster(fpath)
         fdir = grid.read_raster(fpath)
 
-        catchment = grid.catchment(x=lon, y=lat, fdir=fdir, dirmap=dirmap, snap='center')
+        catchment = grid.catchment(lon, lat, fdir, snap='center')
 
         grid.clip_to(catchment)
         catch_view = grid.view(catchment, dtype=np.uint8)
