@@ -1,5 +1,4 @@
 import os
-from copy import copy
 import multiprocessing as mp
 import json
 import requests
