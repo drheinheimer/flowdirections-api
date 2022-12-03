@@ -3,13 +3,18 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.lib.delineation import Delineator
+from app.setup import initialize
 from app.model import Outlets
 from app.helpers import EarthEngineMap
+from app.lib.delineation import delineate_point, delineate_points
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
+resolutions = [15, 30]
+initialize(regions, resolutions)
 
 app = FastAPI(title='flowdirections.io',
               description='A catchment delineation API based on HydroSHEDS + Pysheds',
@@ -33,12 +38,6 @@ app.add_middleware(
 
 EEMap = EarthEngineMap()
 
-_regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
-# _regions = ['na']
-_resolutions = [15, 30]
-
-delineator = Delineator(_regions, _resolutions)
-
 
 @app.get("/")
 async def root():
@@ -56,14 +55,14 @@ async def get_ee_tile(dataset: str, threshold: int):
 
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30):
-    geojson = delineator.delineate_point(lon, lat, res=res)
+    geojson = delineate_point(lon, lat, res=res)
     return geojson
 
 
 @app.post('/delineate_catchment')
 async def delineate_catchment(lat: float = None, lon: float = None, res: int = 30):
     try:
-        geojson = delineator.delineate_point(lon, lat, res=res)
+        geojson = delineate_point(lon, lat, res=res)
         return geojson
     except:
         return 'Uh-oh!'
@@ -72,5 +71,5 @@ async def delineate_catchment(lat: float = None, lon: float = None, res: int = 3
 @app.post('/delineate_catchments')
 async def delineate_catchments(res: int = 30, outlets: Outlets = None):
     features = outlets.features
-    geojson = delineator.delineate_points(features, res=res, parallel=False)
+    geojson = delineate_points(features, res=res, parallel=False)
     return geojson

@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 import json
-import shutil
+from itertools import product
+
+import logging
 
 import requests
 
@@ -11,6 +13,9 @@ import rasterio.warp
 
 from loguru import logger
 
+production = os.environ.get('DEPLOYMENT_MODE') == 'production'
+
+data_dir = os.environ.get('DATA_DIR', './instance/data')
 filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
 
 
@@ -90,13 +95,27 @@ def process_region(region, dest):
     return
 
 
-def initialize():
+def initialize(regions, resolutions):
     logger.info('Initializing grid data...')
-    regions = ['eu', 'as', 'af', 'na', 'sa', 'au']
-    dest = os.environ.get('DATA_DIR', './instance/data')
-    for region in regions:
-        process_region(region, dest)
 
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
-if __name__ == '__main__':
-    initialize()
+    for region, res, data_type in product(regions, resolutions, ['dir', 'acc', 'msk']):
+
+        if data_type == 'msk' and res == 15:
+            continue
+
+        logging.info(f'Loading {data_type} for {region}, {res}s')
+
+        ext = 'json' if data_type == 'msk' else 'tif'
+        mode = 'w' if data_type == 'msk' else 'wb'
+        fname = filename_tpl.format(region=region, data=data_type, res=res, ext=ext)
+        fpath = f'{data_dir}/{fname}'
+
+        if production and not os.path.exists(fpath):
+            data_http_uri = os.environ.get('DATA_HTTP_URI')
+            url = f'{data_http_uri}/{fname}'
+            req = requests.get(url)
+            with open(fpath, mode) as f:
+                f.write(req.content if mode == 'wb' else req.content.decode())
