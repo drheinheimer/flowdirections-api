@@ -15,7 +15,7 @@ class Test(object):
         print('Setting up test environment')
         initialize(regions, [30])
 
-    def _delineate_point(self, lon=None, lat=None, outlet_name=None, res=30):
+    def test_delineate_point(self, lon=None, lat=None, outlet_name=None, res=30):
 
         if lon and lat:
             print(f'testing lat={lat}, lon={lon}')
@@ -34,7 +34,7 @@ class Test(object):
 
         assert ('type' in result and result['type'] == 'FeatureCollection')
 
-    def _delinate_points(self):
+    def test_delinate_points(self):
         with open('./examples/outlets.json') as f:
             outlets = json.load(f)
         features = outlets['features']
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     test = Test(['eu'])
 
     print('Test delineate Weser River, Europe')
-    test._delineate_point(outlet_name='weser')
+    test.test_delineate_point(outlet_name='weser')
 
     # print('Test delineate points')
     # test.delinate_points()
