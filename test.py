@@ -51,6 +51,6 @@ if __name__ == '__main__':
     test.test_delineate_point(outlet_name='weser')
 
     # print('Test delineate points')
-    # test.delinate_points()
+    # test.test_delinate_points()
 
     print('Test passed!')
