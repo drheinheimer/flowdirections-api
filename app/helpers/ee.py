@@ -28,6 +28,27 @@ class EarthEngineMap(object):
         except:
             pass
 
+    def get_streamlines_raster(self, resolution, threshold, showsinks=True, palette='0000FF', sink_color='black'):
+        facc_dataset = f'WWF/HydroSHEDS/{resolution}ACC'
+
+        facc_image = self.ee.Image(facc_dataset)
+        max_threshold = pow(5, (100 - threshold) / 100 * 7.5)
+        streams = facc_image.updateMask(facc_image.gte(max_threshold))
+        streams_visualized = streams.visualize(palette=palette, min=0, max=max_threshold)
+
+        if showsinks:
+            fdir_dataset = f'WWF/HydroSHEDS/{resolution}DIR'
+            fdir_image = self.ee.Image(fdir_dataset)
+            sinks = fdir_image.updateMask(fdir_image.eq(255))
+            sinks_visualized = sinks.visualize(palette=sink_color)
+
+            mosaic = ee.ImageCollection([streams_visualized, sinks_visualized]).mosaic()
+            map_id = mosaic.getMapId()
+        else:
+            map_id = streams_visualized.getMapId()
+
+        return map_id['tile_fetcher'].url_format
+
     def get_earth_engine_map_tile_url(self, dataset, threshold, palette='0000FF'):
         if not self.ee:
             raise Exception('Earth Engine not initialized')

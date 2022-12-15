@@ -53,6 +53,15 @@ async def get_ee_tile(dataset: str, threshold: int):
         return 'Earth Engine not initialized'
 
 
+@app.get('/streamlines_raster')
+async def get_streamlines_raster(resolution: int, threshold: int):
+    try:
+        tile_url = EEMap.get_streamlines_raster(resolution, threshold)
+        return tile_url
+    except:
+        return 'Earth Engine not initialized'
+
+
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30):
     geojson = delineate_point(lon, lat, res=res)
