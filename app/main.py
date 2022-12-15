@@ -36,7 +36,7 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-EEMap = EarthEngineMap()
+app.ee = EarthEngineMap()
 
 
 @app.get("/")
@@ -47,7 +47,7 @@ async def root():
 @app.get('/ee_tile')
 async def get_ee_tile(dataset: str, threshold: int):
     try:
-        tile_url = EEMap.get_earth_engine_map_tile_url(dataset, threshold)
+        tile_url = app.ee.get_earth_engine_map_tile_url(dataset, threshold)
         return tile_url
     except:
         return 'Earth Engine not initialized'
@@ -56,7 +56,7 @@ async def get_ee_tile(dataset: str, threshold: int):
 @app.get('/streamlines_raster')
 async def get_streamlines_raster(resolution: int, threshold: int):
     try:
-        tile_url = EEMap.get_streamlines_raster(resolution, threshold)
+        tile_url = app.ee.get_streamlines_raster(resolution, threshold)
         return tile_url
     except:
         return 'Earth Engine not initialized'
