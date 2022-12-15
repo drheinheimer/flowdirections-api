@@ -41,7 +41,7 @@ def shapes_to_geojson(shapes, remove_sinks=False, stringify=False):
     for geometry, value in shapes:
         if remove_sinks:
             geometry.update(
-                coordinates=geometry['coordinates'][0]
+                coordinates=[geometry['coordinates'][0]]
             )
         feature = {
             "type": "Feature",
