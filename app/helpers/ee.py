@@ -28,7 +28,7 @@ class EarthEngineMap(object):
         except:
             pass
 
-    def get_streamlines_raster(self, resolution, threshold, showsinks=True, palette='0000FF', sink_color='black'):
+    def get_streamlines_raster(self, resolution, threshold, showsinks=True, palette='0000FF', sink_color='red'):
         facc_dataset = f'WWF/HydroSHEDS/{resolution}ACC'
 
         facc_image = self.ee.Image(facc_dataset)
