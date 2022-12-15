@@ -63,8 +63,8 @@ async def get_streamlines_raster(resolution: int, threshold: int):
 
 
 @app.get('/catchment')
-async def delineate(lat: float = None, lon: float = None, res: int = 30):
-    geojson = delineate_point(lon, lat, res=res)
+async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False):
+    geojson = delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
     return geojson
 
 

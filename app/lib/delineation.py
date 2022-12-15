@@ -35,13 +35,17 @@ def get_regions(lon, lat):
         return ['na', 'sa', 'eu', 'af', 'as', 'au']
 
 
-def shapes_to_geojson(shapes, stringify=False):
+def shapes_to_geojson(shapes, remove_sinks=False, stringify=False):
     features = []
 
-    for shape, value in shapes:
+    for geometry, value in shapes:
+        if remove_sinks:
+            geometry.update(
+                coordinates=geometry['coordinates'][0]
+            )
         feature = {
             "type": "Feature",
-            "geometry": shape,
+            "geometry": geometry,
             "properties": {
                 "value": value
             }
@@ -77,7 +81,7 @@ def get_region(lon, lat):
     raise 'No region found'
 
 
-def delineate_point(lon, lat, res=30, output='geojson', region=None, stringify=False):
+def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sinks=False):
     region = region or get_region(lon, lat)
     key = (region, res)
     # grid = copy(grids[key])
@@ -120,7 +124,7 @@ def delineate_point(lon, lat, res=30, output='geojson', region=None, stringify=F
                 i += 1
 
     elif output == 'geojson':
-        return shapes_to_geojson(shapes)
+        return shapes_to_geojson(shapes, remove_sinks=remove_sinks)
 
     elif output == 'shapely':
         geojson = shapes_to_geojson(shapes, stringify=True)
