@@ -8,6 +8,8 @@ from app.model import Outlets
 from app.helpers import EarthEngineMap
 from app.lib.delineation import delineate_point, delineate_points
 
+import redis
+
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -3,6 +3,7 @@ import multiprocessing as mp
 import json
 from itertools import combinations
 from functools import partial
+from math import floor
 
 import logging
 
@@ -12,10 +13,20 @@ from shapely import Point
 import fiona
 import numpy as np
 import rasterio
+from redis import Redis
 
 logging.basicConfig(level=logging.INFO)
 
 data_dir = os.environ.get('DATA_DIR', './instance/data')
+
+try:
+    redis = Redis(
+        host=os.environ.get('REDIS_HOST'),
+        port=os.environ.get('REDIS_PORT', 6379),
+        password=os.environ.get('REDIS_PASSWORD')
+    )
+except:
+    redis = None
 
 
 def get_regions(lon, lat):
@@ -81,7 +92,21 @@ def get_region(lon, lat):
     raise 'No region found'
 
 
+def snap_to_center(n, res):
+    r = res / 60 / 60
+    N = floor(n / r) * r + r / 2
+    return round(N * 10000) / 10000
+
+
 def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sinks=False):
+    _lon = snap_to_center(lon, res)
+    _lat = snap_to_center(lat, res)
+    memory_key = f'{_lon}:{_lat}:{res}:{remove_sinks}'
+    if output == 'geojson' and redis:
+        stored_catchment = redis.get(memory_key)
+        if stored_catchment:
+            return json.loads(stored_catchment.decode())
+
     region = region or get_region(lon, lat)
     key = (region, res)
     # grid = copy(grids[key])
@@ -90,16 +115,15 @@ def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sink
     fpath = f'{data_dir}/{fname}'
     grid = Grid.from_raster(fpath)
     fdir = grid.read_raster(fpath)
-
     catchment = grid.catchment(lon, lat, fdir, snap='center')
-
     grid.clip_to(catchment)
     catch_view = grid.view(catchment, dtype=np.uint8)
-
     shapes = grid.polygonize(catch_view)
 
+    result = None
+
     if output == 'native':
-        return shapes
+        result = shapes
 
     elif output == 'shapefile':
 
@@ -124,11 +148,15 @@ def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sink
                 i += 1
 
     elif output == 'geojson':
-        return shapes_to_geojson(shapes, remove_sinks=remove_sinks)
+        result = shapes_to_geojson(shapes, remove_sinks=remove_sinks)
+        if redis:
+            redis.set(memory_key, json.dumps(result))
 
     elif output == 'shapely':
         geojson = shapes_to_geojson(shapes, stringify=True)
-        return shapely.from_geojson(geojson)
+        result = shapely.from_geojson(geojson)
+
+    return result
 
 
 def get_facc(lon, lat, region, res):
