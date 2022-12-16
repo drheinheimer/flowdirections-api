@@ -20,13 +20,16 @@ logging.basicConfig(level=logging.INFO)
 data_dir = os.environ.get('DATA_DIR', './instance/data')
 
 try:
+    redis_host = os.environ['REDIS_HOST']
     redis = Redis(
-        host=os.environ.get('REDIS_HOST'),
+        host=redis_host,
         port=os.environ.get('REDIS_PORT', 6379),
         password=os.environ.get('REDIS_PASSWORD')
     )
+    logging.info(f'Starting with REDIS on server {redis_host}')
 except:
     redis = None
+    logging.warning('Starting without REDIS')
 
 
 def get_regions(lon, lat):
