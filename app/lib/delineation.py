@@ -15,6 +15,10 @@ import numpy as np
 import rasterio
 from redis import Redis
 
+import dotenv
+
+dotenv.load_dotenv()
+
 logging.basicConfig(level=logging.INFO)
 
 data_dir = os.environ.get('DATA_DIR', './instance/data')
