@@ -28,7 +28,7 @@ class Test(object):
             raise Exception('Coordinates or outlet name must be provided')
 
         start_time = dt.datetime.now()
-        result = delineate_point(lon, lat, res=30)
+        result = delineate_point(lon, lat, res=30, memcache=False)
         elapsed_time = dt.datetime.now() - start_time
         print(f'elapsed time: {elapsed_time}')
 
@@ -45,10 +45,10 @@ class Test(object):
 
 if __name__ == '__main__':
     print('Initializing test')
-    test = Test(['eu'])
+    test = Test(['na'])
 
-    print('Test delineate Weser River, Europe')
-    test.test_delineate_point(outlet_name='weser')
+    # print('Test delineate Delaware River')
+    test.test_delineate_point(outlet_name='delaware')
 
     # print('Test delineate points')
     # test.test_delinate_points()

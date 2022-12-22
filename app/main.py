@@ -8,7 +8,7 @@ from app.model import Outlets
 from app.helpers import EarthEngineMap
 from app.lib.delineation import delineate_point, delineate_points
 
-import redis
+import logging
 
 from dotenv import load_dotenv
 
@@ -23,7 +23,7 @@ app = FastAPI(title='flowdirections.io',
               version='0.0.1')
 
 deployment_mode = os.environ.get('DEPLOYMENT_MODE', 'development')
-print(deployment_mode)
+logging.info(f'Deployment mode: {deployment_mode}')
 if deployment_mode == 'production':
     allowed_origin = os.environ.get('ALLOWED_ORIGIN')
     if not allowed_origin:

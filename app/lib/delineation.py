@@ -9,7 +9,6 @@ import logging
 
 from pysheds.grid import Grid
 import shapely
-from shapely import Point
 import fiona
 import numpy as np
 import rasterio
@@ -86,7 +85,7 @@ filename_tpl = 'hyd_{region}_{data}_{res}s.{ext}'
 
 def get_region(lon, lat):
     regions = get_regions(lon, lat)
-    point = Point(lon, lat)
+    point = shapely.Point(lon, lat)
     for region in regions:
         filename = f'{data_dir}/hyd_{region}_msk_30s.json'
         with open(filename) as f:
@@ -105,19 +104,16 @@ def snap_to_center(n, res):
     return round(N * 10000) / 10000
 
 
-def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sinks=False):
+def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sinks=False, memcache=True):
     _lon = snap_to_center(lon, res)
     _lat = snap_to_center(lat, res)
     memory_key = f'{_lon}:{_lat}:{res}:{remove_sinks}'
-    if output == 'geojson' and redis:
+    if memcache and output == 'geojson' and redis:
         stored_catchment = redis.get(memory_key)
         if stored_catchment:
             return json.loads(stored_catchment.decode())
 
     region = region or get_region(lon, lat)
-    key = (region, res)
-    # grid = copy(grids[key])
-    # fdir = copy(fdirs[key])
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
     fpath = f'{data_dir}/{fname}'
     grid = Grid.from_raster(fpath)
