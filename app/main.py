@@ -114,6 +114,7 @@ async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_
 
         else:
             result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
+            redis.set(memory_key, json.dumps(result))
             return result
     except:
         return 'Uh-oh!'
