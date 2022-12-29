@@ -3,7 +3,6 @@ import multiprocessing as mp
 import json
 from itertools import combinations
 from functools import partial
-from math import floor
 
 import logging
 
@@ -11,6 +10,8 @@ from pysheds.grid import Grid
 import shapely
 import numpy as np
 import rasterio
+
+from app.lib.utils import snap_to_center
 
 import dotenv
 
@@ -84,16 +85,7 @@ def get_region(lon, lat):
     raise 'No region found'
 
 
-def snap_to_center(n, res):
-    r = res / 60 / 60
-    N = floor(n / r) * r + r / 2
-    return round(N * 10000) / 10000
-
-
-def delineate_point(lon, lat, res=30, region=None, remove_sinks=False, memory_key=None):
-    _lon = snap_to_center(lon, res)
-    _lat = snap_to_center(lat, res)
-
+def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
     fpath = f'{data_dir}/{fname}'
@@ -120,7 +112,7 @@ def get_facc(lon, lat, region, res):
 def _delineate_point(feature, res=30):
     lon, lat = feature['geometry']['coordinates']
     region = get_region(lon, lat)
-    catchment = delineate_point(lon, lat, res=res, region=region, output='shapely')
+    catchment = delineate_point(lon, lat, res=res, region=region)
     delineation = {
         'coords': (lon, lat),
         'catchment': catchment,

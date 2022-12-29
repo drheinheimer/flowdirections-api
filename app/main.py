@@ -1,12 +1,10 @@
 import os
-import json
 import logging
 
 from fastapi import FastAPI, Security, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader, APIKeyQuery
 
-from app.store import redis
 from app.setup import initialize
 from app.model import Outlets
 from app.helpers import EarthEngineMap
@@ -72,13 +70,6 @@ app.add_middleware(
 app.ee = EarthEngineMap()
 
 
-def get_stored_result(key):
-    if redis:
-        stored_value = redis.get(key)
-        if stored_value and stored_value != b'null':
-            return stored_value.decode()
-
-
 @app.get("/")
 async def root():
     return "Hello, Hydrologist!"
@@ -105,17 +96,10 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     task_id: str = None, api_key: str = Security(get_api_key)):
-    memory_key = f'{lon}:{lat}:{res}:{remove_sinks}'
 
     try:
-        result = get_stored_result(memory_key)
-        if result:
-            return json.loads(result)
-
-        else:
-            result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
-            redis.set(memory_key, json.dumps(result))
-            return result
+        result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
+        return result
     except:
         return 'Uh-oh!'
 
