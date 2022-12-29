@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 
 from fastapi import FastAPI, Security, HTTPException, status
@@ -7,9 +8,11 @@ from fastapi.security import APIKeyHeader, APIKeyQuery
 
 from app.setup import initialize
 from app.model import Outlets
+from app.store import redis
 from app.helpers import EarthEngineMap
 from app.tasks import celery, delineate_point
 from app.lib.delineation import delineate_points
+from app.lib.utils import make_catchment_key
 
 from celery.result import AsyncResult
 
@@ -31,7 +34,6 @@ def get_api_key(
         api_key_query: str = Security(api_key_query),
         api_key_header: str = Security(api_key_header),
 ):
-
     """Retrieve & validate an API key from the query parameters or HTTP header"""
     # If the API Key is present as a query param & is valid, return it
     if api_key_query in API_KEYS:
@@ -75,6 +77,27 @@ def get_celery_worker_status():
     i = celery.control.inspect()
     return i.ping()
 
+
+def get_stored_result(key):
+    if redis:
+        stored_value = redis.get(key)
+        if stored_value and stored_value != b'null':
+            return stored_value.decode()
+
+
+def get_result(key, fn, *args, **kwargs):
+    result = get_stored_result(key)
+    if result:
+        return json.loads(result)
+    else:
+        if get_celery_worker_status():
+            result = fn.delay(*args, **kwargs).get()
+        else:
+            result = fn(*args, **kwargs)
+        redis.set(key, json.dumps(result))
+        return result
+
+
 @app.get("/")
 async def root():
     return "Hello, Hydrologist!"
@@ -101,12 +124,9 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     api_key: str = Security(get_api_key)):
-
     try:
-        if get_celery_worker_status():
-            result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
-        else:
-            result = delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
+        key = make_catchment_key(lat, lon, res, remove_sinks)
+        result = get_result(key, delineate_point, lon, lat, res=res, remove_sinks=remove_sinks)
         return result
     except:
         return 'Uh-oh!'

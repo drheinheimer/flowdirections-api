@@ -11,8 +11,6 @@ import shapely
 import numpy as np
 import rasterio
 
-from app.lib.utils import snap_to_center
-
 import dotenv
 
 dotenv.load_dotenv()
@@ -85,6 +83,14 @@ def get_region(lon, lat):
     raise 'No region found'
 
 
+def get_facc(lon, lat, region, res):
+    facc_fname = filename_tpl.format(region=region, data='acc', res=res, ext='tif')
+    facc_path = f'{data_dir}/{facc_fname}'
+    with rasterio.open(facc_path) as dataset:
+        facc = list(dataset.sample([(lon, lat)]))[0][0]
+    return facc
+
+
 def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
@@ -99,14 +105,6 @@ def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
     result = shapes_to_geojson(shapes, remove_sinks=remove_sinks)
 
     return result
-
-
-def get_facc(lon, lat, region, res):
-    facc_fname = filename_tpl.format(region=region, data='acc', res=res, ext='tif')
-    facc_path = f'{data_dir}/{facc_fname}'
-    with rasterio.open(facc_path) as dataset:
-        facc = list(dataset.sample([(lon, lat)]))[0][0]
-    return facc
 
 
 def _delineate_point(feature, res=30):
