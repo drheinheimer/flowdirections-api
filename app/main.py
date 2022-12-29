@@ -1,13 +1,17 @@
 import os
+import json
 
 from fastapi import FastAPI, Security, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader, APIKeyQuery
+from fastapi.responses import JSONResponse
 
+from app.store import redis
 from app.setup import initialize
 from app.model import Outlets
 from app.helpers import EarthEngineMap
-from app.lib.delineation import delineate_point, delineate_points
+from app.tasks import delineate_point
+from app.lib.delineation import delineate_points
 
 import logging
 
@@ -95,8 +99,14 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     api_key: str = Security(get_api_key)):
     try:
-        geojson = delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
-        return geojson
+        memory_key = f'{lon}:{lat}:{res}:{remove_sinks}'
+        if redis:
+            stored_catchment = redis.get(memory_key)
+            if stored_catchment:
+                return json.loads(stored_catchment.decode())
+
+        task = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks, memory_key=memory_key)
+        return {'task_id': task.id}
     except:
         return 'Uh-oh!'
 

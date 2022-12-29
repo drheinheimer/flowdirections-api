@@ -9,10 +9,10 @@ import logging
 
 from pysheds.grid import Grid
 import shapely
-import fiona
 import numpy as np
 import rasterio
-from redis import Redis
+
+from app.store import redis
 
 import dotenv
 
@@ -21,18 +21,6 @@ dotenv.load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 data_dir = os.environ.get('DATA_DIR', './instance/data')
-
-try:
-    redis_host = os.environ['REDIS_HOST']
-    redis = Redis(
-        host=redis_host,
-        port=os.environ.get('REDIS_PORT', 6379),
-        password=os.environ.get('REDIS_PASSWORD')
-    )
-    logging.info(f'Starting with REDIS on server {redis_host}')
-except:
-    redis = None
-    logging.warning('Starting without REDIS')
 
 
 def get_regions(lon, lat):
@@ -104,14 +92,9 @@ def snap_to_center(n, res):
     return round(N * 10000) / 10000
 
 
-def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sinks=False, memcache=True):
+def delineate_point(lon, lat, res=30, region=None, remove_sinks=False, memory_key=None):
     _lon = snap_to_center(lon, res)
     _lat = snap_to_center(lat, res)
-    memory_key = f'{_lon}:{_lat}:{res}:{remove_sinks}'
-    if memcache and output == 'geojson' and redis:
-        stored_catchment = redis.get(memory_key)
-        if stored_catchment:
-            return json.loads(stored_catchment.decode())
 
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
@@ -123,41 +106,9 @@ def delineate_point(lon, lat, res=30, output='geojson', region=None, remove_sink
     catch_view = grid.view(catchment, dtype=np.uint8)
     shapes = grid.polygonize(catch_view)
 
-    result = None
-
-    if output == 'native':
-        result = shapes
-
-    elif output == 'shapefile':
-
-        # Specify schema
-        schema = {
-            'geometry': 'Polygon',
-            'properties': {'LABEL': 'float:16'}
-        }
-
-        # Write shapefile
-        with fiona.open('catchment.shp', 'w',
-                        driver='ESRI Shapefile',
-                        crs=grid.crs.srs,
-                        schema=schema) as c:
-            i = 0
-            for shape, value in shapes:
-                rec = {}
-                rec['geometry'] = shape
-                rec['properties'] = {'LABEL': str(value)}
-                rec['id'] = str(i)
-                c.write(rec)
-                i += 1
-
-    elif output == 'geojson':
-        result = shapes_to_geojson(shapes, remove_sinks=remove_sinks)
-        if redis:
-            redis.set(memory_key, json.dumps(result))
-
-    elif output == 'shapely':
-        geojson = shapes_to_geojson(shapes, stringify=True)
-        result = shapely.from_geojson(geojson)
+    result = shapes_to_geojson(shapes, remove_sinks=remove_sinks)
+    if redis and memory_key:
+        redis.set(memory_key, json.dumps(result))
 
     return result
 

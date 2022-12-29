@@ -48,7 +48,7 @@ if __name__ == '__main__':
     test = Test(['na'])
 
     # print('Test delineate Delaware River')
-    test.test_delineate_point(outlet_name='delaware')
+    test.test_delineate_point(outlet_name='colorado')
 
     # print('Test delineate points')
     # test.test_delinate_points()
