@@ -12,8 +12,6 @@ import shapely
 import numpy as np
 import rasterio
 
-from app.store import redis
-
 import dotenv
 
 dotenv.load_dotenv()
@@ -107,8 +105,6 @@ def delineate_point(lon, lat, res=30, region=None, remove_sinks=False, memory_ke
     shapes = grid.polygonize(catch_view)
 
     result = shapes_to_geojson(shapes, remove_sinks=remove_sinks)
-    if redis and memory_key:
-        redis.set(memory_key, json.dumps(result))
 
     return result
 

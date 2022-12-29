@@ -1,10 +1,10 @@
 import os
 import json
+import logging
 
 from fastapi import FastAPI, Security, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader, APIKeyQuery
-from fastapi.responses import JSONResponse
 
 from app.store import redis
 from app.setup import initialize
@@ -13,7 +13,7 @@ from app.helpers import EarthEngineMap
 from app.tasks import delineate_point
 from app.lib.delineation import delineate_points
 
-import logging
+from celery.result import AsyncResult
 
 from dotenv import load_dotenv
 
@@ -72,6 +72,13 @@ app.add_middleware(
 app.ee = EarthEngineMap()
 
 
+def get_stored_result(key):
+    if redis:
+        stored_value = redis.get(key)
+        if stored_value and stored_value != b'null':
+            return stored_value.decode()
+
+
 @app.get("/")
 async def root():
     return "Hello, Hydrologist!"
@@ -97,16 +104,17 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
-                    api_key: str = Security(get_api_key)):
-    try:
-        memory_key = f'{lon}:{lat}:{res}:{remove_sinks}'
-        if redis:
-            stored_catchment = redis.get(memory_key)
-            if stored_catchment:
-                return json.loads(stored_catchment.decode())
+                    task_id: str = None, api_key: str = Security(get_api_key)):
+    memory_key = f'{lon}:{lat}:{res}:{remove_sinks}'
 
-        task = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks, memory_key=memory_key)
-        return {'task_id': task.id}
+    try:
+        result = get_stored_result(memory_key)
+        if result:
+            return json.loads(result)
+
+        else:
+            result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks, memory_key=memory_key).get()
+            return result
     except:
         return 'Uh-oh!'
 
