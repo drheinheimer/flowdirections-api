@@ -8,7 +8,7 @@ from fastapi.security import APIKeyHeader, APIKeyQuery
 from app.setup import initialize
 from app.model import Outlets
 from app.helpers import EarthEngineMap
-from app.tasks import delineate_point
+from app.tasks import celery, delineate_point
 from app.lib.delineation import delineate_points
 
 from celery.result import AsyncResult
@@ -31,6 +31,7 @@ def get_api_key(
         api_key_query: str = Security(api_key_query),
         api_key_header: str = Security(api_key_header),
 ):
+
     """Retrieve & validate an API key from the query parameters or HTTP header"""
     # If the API Key is present as a query param & is valid, return it
     if api_key_query in API_KEYS:
@@ -70,6 +71,10 @@ app.add_middleware(
 app.ee = EarthEngineMap()
 
 
+def get_celery_worker_status():
+    i = celery.control.inspect()
+    return i.ping()
+
 @app.get("/")
 async def root():
     return "Hello, Hydrologist!"
@@ -95,10 +100,13 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 
 @app.get('/catchment')
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
-                    task_id: str = None, api_key: str = Security(get_api_key)):
+                    api_key: str = Security(get_api_key)):
 
     try:
-        result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
+        if get_celery_worker_status():
+            result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
+        else:
+            result = delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
         return result
     except:
         return 'Uh-oh!'
