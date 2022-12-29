@@ -113,7 +113,7 @@ async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_
             return json.loads(result)
 
         else:
-            result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks, memory_key=memory_key).get()
+            result = delineate_point.delay(lon, lat, res=res, remove_sinks=remove_sinks).get()
             return result
     except:
         return 'Uh-oh!'

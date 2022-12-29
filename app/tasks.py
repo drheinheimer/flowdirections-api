@@ -2,7 +2,6 @@ import os
 import json
 
 from celery import Celery
-from app.store import redis
 
 from app.lib.delineation import delineate_point as _delineate_point
 
@@ -20,6 +19,6 @@ celery = Celery(
 
 
 @celery.task(name='delineate_point')
-def delineate_point(*args, memory_key=None, **kwargs):
+def delineate_point(*args, **kwargs):
     catchment = _delineate_point(*args, **kwargs)
-    redis.set(memory_key, json.dumps(catchment))
+    return catchment
