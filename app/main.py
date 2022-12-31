@@ -125,7 +125,7 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     api_key: str = Security(get_api_key)):
     try:
-        key = make_catchment_key(lat, lon, res, remove_sinks)
+        key = make_catchment_key(lat, lon, res, 'd8', remove_sinks)
         result = get_result(key, delineate_point, lon, lat, res=res, remove_sinks=remove_sinks)
         return result
     except:

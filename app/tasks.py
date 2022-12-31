@@ -18,5 +18,5 @@ celery = Celery(
 
 
 @celery.task(name='delineate_point')
-def delineate_point(lon, lat, res=30, remove_sinks=False):
-    return _delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
+def delineate_point(lon, lat, routing='d8', res=30, remove_sinks=False):
+    return _delineate_point(lon, lat, routing=routing, res=res, remove_sinks=remove_sinks)

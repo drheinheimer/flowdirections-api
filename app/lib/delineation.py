@@ -91,13 +91,13 @@ def get_facc(lon, lat, region, res):
     return facc
 
 
-def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
+def delineate_point(lon, lat, routing='d8', res=30, region=None, remove_sinks=False):
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
     fpath = f'{data_dir}/{fname}'
     grid = Grid.from_raster(fpath)
     fdir = grid.read_raster(fpath)
-    catchment = grid.catchment(lon, lat, fdir, snap='center')
+    catchment = grid.catchment(lon, lat, fdir, routing=routing, snap='center')
     grid.clip_to(catchment)
     catch_view = grid.view(catchment, dtype=np.uint8)
     shapes = grid.polygonize(catch_view)
