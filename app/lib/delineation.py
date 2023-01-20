@@ -1,8 +1,6 @@
 import os
-import multiprocessing as mp
 import json
 from itertools import combinations
-from functools import partial
 
 import logging
 
@@ -88,14 +86,6 @@ def get_region(lon, lat):
     raise 'No region found'
 
 
-def get_facc(lon, lat, region, res):
-    facc_fname = filename_tpl.format(region=region, data='acc', res=res, ext='tif')
-    facc_path = f'{data_dir}/{facc_fname}'
-    with rasterio.open(facc_path) as dataset:
-        facc = list(dataset.sample([(lon, lat)]))[0][0]
-    return facc
-
-
 def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
@@ -110,18 +100,6 @@ def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
     result = shapes_to_geojson(lon, lat, shapes, region=region, remove_sinks=remove_sinks)
 
     return result
-
-
-def _delineate_point(feature, res=30):
-    lon, lat = feature['geometry']['coordinates']
-    region = get_region(lon, lat)
-    catchment = delineate_point(lon, lat, res=res, region=region)
-    delineation = {
-        'coords': (lon, lat),
-        'catchment': catchment,
-        'facc': get_facc(lon, lat, region, res)
-    }
-    return delineation
 
 
 def delineations_to_subcatchments(delineations):
