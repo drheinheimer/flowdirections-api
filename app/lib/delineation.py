@@ -50,6 +50,7 @@ def shapes_to_geojson(lon, lat, shapes, region=None, remove_sinks=False, stringi
             "geometry": geometry,
             "properties": {
                 "value": value,
+                "outlet_coords": [lon, lat]
             }
         }
         features.append(feature)
@@ -59,7 +60,7 @@ def shapes_to_geojson(lon, lat, shapes, region=None, remove_sinks=False, stringi
         'features': features,
         'properties': {
             'region': region,
-            'outlet_coord': [lon, lat]
+            'outlet_coords': [lon, lat]
         }
     }
 
@@ -124,45 +125,40 @@ def _delineate_point(feature, res=30):
 
 
 def delineations_to_subcatchments(delineations):
-    outlets = {d['properties']['outlet_coords']: d for d in delineations}
-    catchment_combos = list(combinations(outlets.keys(), 2))
-    for i, (p1, p2) in enumerate(catchment_combos):
-        o1 = outlets.get(p1)
-        o2 = outlets.get(p2)
-        if not (o1 and o2):
-            continue
-        c1 = o1['catchment']
-        c2 = o2['catchment']
-        if not shapely.intersects(c1, c2):
-            continue
+    catchments = {}
+    for d in delineations:
+        coords = tuple(d['properties']['outlet_coords'])
+        geom = shapely.from_geojson(json.dumps(d))
+        catchments[coords] = geom
 
-        if o1['facc'] > o2['facc']:
-            c1_new = shapely.difference(c1, c2)
-            outlets[p1]['catchment'] = c1_new
-        elif o1['facc'] < o2['facc']:
-            c2_new = shapely.difference(c2, c1)
-            outlets[p2]['catchment'] = c2_new
+    catchment_combos = list(combinations(catchments.keys(), 2))
+    for i, (p1, p2) in enumerate(catchment_combos):
+        c1 = catchments[p1]
+        c2 = catchments[p2]
+
+        # the core algorithm
+        if shapely.contains_xy(c1, *p2):
+            catchments[p1] = shapely.difference(c1, c2)
+        elif shapely.contains_xy(c2, *p1):
+            catchments[p2] = shapely.difference(c2, c1)
 
     features = []
-    for outlet in outlets.values():
-        geom = outlet['catchment']
+    for point, geom in catchments.items():
         geom_type = geom.geom_type
-        if geom_type == 'GeometryCollection':
-            geometry = geom.geoms[0]  # TODO: check if this is valid
-        elif geom_type == 'Polygon':
+        if geom_type == 'Polygon':
             geometry = geom
-        elif geom_type == 'MultiPolygon':
+        elif geom_type in ['MultiPolygon', 'GeometryCollection']:
             area_threshold = 1e-6  # TODO: confirm this threshold
             geometries = [g for g in geom.geoms if g.area >= area_threshold]
-            if len(geometries) == 1:
-                geometry = geometries[0]
-            else:
-                geometry = geometries[0]
+            geometry = geometries[0]  # TODO: confirm
         else:
             raise Exception(f'Unsupported geometry: {geom_type}')
 
         feature = {
             'type': 'Feature',
+            'properties': {
+                'outlet_coords': list(point)
+            },
             'geometry': json.loads(shapely.to_geojson(geometry)),
         }
 
@@ -179,8 +175,11 @@ def delineations_to_subcatchments(delineations):
 def delineate_points(features, res=30):
     delineations = []
     for feature in features:
-        delineation = _delineate_point(feature, res=res)
-        delineations.append(delineation)
+        # delineation = _delineate_point(feature, res=res)
+        lon, lat = feature['geometry']['coordinates']
+        region = get_region(lon, lat)
+        catchment = delineate_point(lon, lat, res=res, region=region)
+        delineations.append(catchment)
 
     # step 2: convert to subcatchments
     catchments = delineations_to_subcatchments(delineations)
