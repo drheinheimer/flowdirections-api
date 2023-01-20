@@ -107,7 +107,7 @@ def initialize(regions, resolutions):
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
 
-    for region, res, data_type in product(regions, resolutions, ['dir', 'acc', 'msk']):
+    for region, res, data_type in product(regions, resolutions, ['dir', 'msk']):
 
         if data_type == 'msk' and res == 15:
             continue
