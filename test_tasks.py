@@ -2,7 +2,7 @@ import datetime as dt
 import json
 
 from app.setup import initialize
-from app.lib.delineation import delineate_point, delineate_points
+from app.tasks import delineate_point, delineate_from_feature, delineate_from_features
 
 from dotenv import load_dotenv
 
@@ -23,34 +23,36 @@ class Test(object):
         elif outlet_name:
             with open(f'./examples/{outlet_name}.json') as f:
                 outlet = json.load(f)
-                lon, lat = outlet['geometry']['coordinates']
+
         else:
             raise Exception('Coordinates or outlet name must be provided')
 
         start_time = dt.datetime.now()
-        result = delineate_point(lon, lat, res=30)
+        result = delineate_point(outlet, res=30)
         elapsed_time = dt.datetime.now() - start_time
         print(f'elapsed time: {elapsed_time}')
 
         assert ('type' in result and result['type'] == 'FeatureCollection')
 
-    def test_delinate_points(self):
+    def test_delinate_points(self, res):
         with open('./examples/outlets.json') as f:
             outlets = json.load(f)
         features = outlets['features']
-        result = delineate_points(features)
+        result = delineate_from_features(features, res=res)
 
-        assert result.get('type') == 'FeatureCollection'
+        assert ('type' in result and result['type'] == 'FeatureCollection')
 
 
 if __name__ == '__main__':
     print('Initializing test')
     test = Test(['na'])
 
+    res = 30
+
     # print('Test delineate Delaware River')
     # test.test_delineate_point(outlet_name='colorado')
 
     # print('Test delineate points')
-    test.test_delinate_points()
+    test.test_delinate_points(res=res)
 
     print('Test passed!')

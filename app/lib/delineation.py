@@ -37,7 +37,7 @@ def get_regions(lon, lat):
         return ['na', 'sa', 'eu', 'af', 'as', 'au']
 
 
-def shapes_to_geojson(shapes, remove_sinks=False, stringify=False):
+def shapes_to_geojson(lon, lat, shapes, region=None, remove_sinks=False, stringify=False):
     features = []
 
     for geometry, value in shapes:
@@ -49,14 +49,18 @@ def shapes_to_geojson(shapes, remove_sinks=False, stringify=False):
             "type": "Feature",
             "geometry": geometry,
             "properties": {
-                "value": value
+                "value": value,
             }
         }
         features.append(feature)
 
     geojson = {
         'type': 'FeatureCollection',
-        'features': features
+        'features': features,
+        'properties': {
+            'region': region,
+            'outlet_coord': [lon, lat]
+        }
     }
 
     if stringify:
@@ -91,18 +95,18 @@ def get_facc(lon, lat, region, res):
     return facc
 
 
-def delineate_point(lon, lat, routing='d8', res=30, region=None, remove_sinks=False):
+def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
     fpath = f'{data_dir}/{fname}'
     grid = Grid.from_raster(fpath)
     fdir = grid.read_raster(fpath)
-    catchment = grid.catchment(lon, lat, fdir, routing=routing, snap='center')
+    catchment = grid.catchment(lon, lat, fdir, snap='center')
     grid.clip_to(catchment)
     catch_view = grid.view(catchment, dtype=np.uint8)
     shapes = grid.polygonize(catch_view)
 
-    result = shapes_to_geojson(shapes, remove_sinks=remove_sinks)
+    result = shapes_to_geojson(lon, lat, shapes, region=region, remove_sinks=remove_sinks)
 
     return result
 
@@ -119,19 +123,8 @@ def _delineate_point(feature, res=30):
     return delineation
 
 
-def delineate_points(features, res=30, parallel=False):
-    # step 1: create basic catchments
-    if parallel:
-        pool = mp.Pool(processes=4)
-        func = partial(_delineate_point, res=30)
-        delineations = pool.map(func, features)
-    else:
-        delineations = []
-        for feature in features:
-            delineation = _delineate_point(feature, res=res)
-            delineations.append(delineation)
-
-    outlets = {d['coords']: d for d in delineations}
+def delineations_to_subcatchments(delineations):
+    outlets = {d['properties']['outlet_coords']: d for d in delineations}
     catchment_combos = list(combinations(outlets.keys(), 2))
     for i, (p1, p2) in enumerate(catchment_combos):
         o1 = outlets.get(p1)
@@ -170,14 +163,26 @@ def delineate_points(features, res=30, parallel=False):
 
         feature = {
             'type': 'Feature',
-            'geometry': json.loads(shapely.to_geojson(geometry))
+            'geometry': json.loads(shapely.to_geojson(geometry)),
         }
 
         features.append(feature)
 
     geojson = {
         'type': 'FeatureCollection',
-        'features': features
+        'features': features,
     }
 
     return geojson
+
+
+def delineate_points(features, res=30):
+    delineations = []
+    for feature in features:
+        delineation = _delineate_point(feature, res=res)
+        delineations.append(delineation)
+
+    # step 2: convert to subcatchments
+    catchments = delineations_to_subcatchments(delineations)
+
+    return catchments

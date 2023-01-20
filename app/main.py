@@ -10,8 +10,7 @@ from app.setup import initialize
 from app.model import Outlets
 from app.store import redis
 from app.helpers import EarthEngineMap
-from app.tasks import celery, delineate_point
-from app.lib.delineation import delineate_points
+from app.tasks import celery, delineate_point, delineate_points
 from app.lib.utils import make_catchment_key
 
 from celery.result import AsyncResult
