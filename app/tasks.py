@@ -37,6 +37,7 @@ def delineate_from_features(features, res=30, remove_sinks=False):
     n = len(features)
     resolutions = [res] * n
     remove_sinkss = [remove_sinks] * n
+
     delineations = ~delineate_from_feature.starmap(zip(features, resolutions, remove_sinkss))
 
     catchments = delineations_to_subcatchments(delineations)

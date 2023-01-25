@@ -48,8 +48,7 @@ def get_api_key(
 
 
 app = FastAPI(title='flowdirections.io',
-              description='A catchment delineation API using pysheds + HydroSHEDS',
-              version='0.0.1')
+              description='A catchment delineation API using pysheds + HydroSHEDS')
 
 deployment_mode = os.environ.get('DEPLOYMENT_MODE', 'development')
 logging.info(f'Deployment mode: {deployment_mode}')
@@ -95,13 +94,16 @@ def get_result(key, fn, *args, **kwargs):
         return result
 
 
+v1 = FastAPI()
+
+
 @app.get("/")
 def root():
     return "Hello, Hydrologist!"
 
 
 @app.get('/ee_tile')
-def get_ee_tile(dataset: str, threshold: int, api_key: str = Security(get_api_key)):
+async def get_ee_tile(dataset: str, threshold: int, api_key: str = Security(get_api_key)):
     try:
         tile_url = app.ee.get_earth_engine_map_tile_url(dataset, threshold)
         return tile_url
@@ -110,7 +112,7 @@ def get_ee_tile(dataset: str, threshold: int, api_key: str = Security(get_api_ke
 
 
 @app.get('/tiles/streamlines')
-def get_streamlines_raster(resolution: int, threshold: int, api_key: str = Security(get_api_key)):
+async def get_streamlines_raster(resolution: int, threshold: int, api_key: str = Security(get_api_key)):
     try:
         tile_url = app.ee.get_streamlines_raster(resolution, threshold)
         return tile_url
@@ -119,7 +121,7 @@ def get_streamlines_raster(resolution: int, threshold: int, api_key: str = Secur
 
 
 @app.get('/catchment')
-def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
+async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     api_key: str = Security(get_api_key)):
     try:
         key = make_catchment_key(lat, lon, res, 'd8', remove_sinks)
@@ -130,7 +132,7 @@ def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks:
 
 
 @app.post('/delineate_catchment')
-def delineate_catchment(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
+async def delineate_catchment(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                               api_key: str = Security(get_api_key)):
     try:
         geojson = delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
@@ -140,10 +142,11 @@ def delineate_catchment(lat: float = None, lon: float = None, res: int = 30, rem
 
 
 @app.post('/delineate_catchments')
-def delineate_catchments(res: int = 30, outlets: Outlets = None, api_key: str = Security(get_api_key)):
+async def delineate_catchments(res: int = 30, outlets: Outlets = None, remove_sinks: bool = False,
+                               api_key: str = Security(get_api_key)):
     try:
         features = outlets.features
-        geojson = delineate_from_features(features, res=res, parallel=False)
+        geojson = delineate_from_features(features, res=res, remove_sinks=remove_sinks)
         return geojson
     except:
         return 'Uh-oh!'
