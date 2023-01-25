@@ -10,10 +10,8 @@ from app.setup import initialize
 from app.model import Outlets
 from app.store import redis
 from app.helpers import EarthEngineMap
-from app.tasks import celery, delineate_point, delineate_points
+from app.tasks import celery, delineate_point, delineate_from_features
 from app.lib.utils import make_catchment_key
-
-from celery.result import AsyncResult
 
 from dotenv import load_dotenv
 
@@ -98,12 +96,12 @@ def get_result(key, fn, *args, **kwargs):
 
 
 @app.get("/")
-async def root():
+def root():
     return "Hello, Hydrologist!"
 
 
 @app.get('/ee_tile')
-async def get_ee_tile(dataset: str, threshold: int, api_key: str = Security(get_api_key)):
+def get_ee_tile(dataset: str, threshold: int, api_key: str = Security(get_api_key)):
     try:
         tile_url = app.ee.get_earth_engine_map_tile_url(dataset, threshold)
         return tile_url
@@ -112,7 +110,7 @@ async def get_ee_tile(dataset: str, threshold: int, api_key: str = Security(get_
 
 
 @app.get('/tiles/streamlines')
-async def get_streamlines_raster(resolution: int, threshold: int, api_key: str = Security(get_api_key)):
+def get_streamlines_raster(resolution: int, threshold: int, api_key: str = Security(get_api_key)):
     try:
         tile_url = app.ee.get_streamlines_raster(resolution, threshold)
         return tile_url
@@ -121,7 +119,7 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 
 
 @app.get('/catchment')
-async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
+def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     api_key: str = Security(get_api_key)):
     try:
         key = make_catchment_key(lat, lon, res, 'd8', remove_sinks)
@@ -132,7 +130,7 @@ async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_
 
 
 @app.post('/delineate_catchment')
-async def delineate_catchment(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
+def delineate_catchment(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                               api_key: str = Security(get_api_key)):
     try:
         geojson = delineate_point(lon, lat, res=res, remove_sinks=remove_sinks)
@@ -142,10 +140,10 @@ async def delineate_catchment(lat: float = None, lon: float = None, res: int = 3
 
 
 @app.post('/delineate_catchments')
-async def delineate_catchments(res: int = 30, outlets: Outlets = None, api_key: str = Security(get_api_key)):
+def delineate_catchments(res: int = 30, outlets: Outlets = None, api_key: str = Security(get_api_key)):
     try:
         features = outlets.features
-        geojson = delineate_points(features, res=res, parallel=False)
+        geojson = delineate_from_features(features, res=res, parallel=False)
         return geojson
     except:
         return 'Uh-oh!'
