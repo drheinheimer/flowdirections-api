@@ -33,3 +33,4 @@ need to store/manage the json credentials.
 
 Celery is used to manage tasks. `tasks.py` contains all the relevant Celery tasks, and can be run as follows:
 * Windows: `celery -A app.tasks worker -l info -P eventlet`
+* Linux: `celery -A app.tasks worker -l info -P eventlet --concurrency=10`
