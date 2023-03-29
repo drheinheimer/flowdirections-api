@@ -7,7 +7,6 @@ import logging
 from pysheds.grid import Grid
 import shapely
 import numpy as np
-import rasterio
 
 import dotenv
 
@@ -87,6 +86,7 @@ def get_region(lon, lat):
 
 
 def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
+
     region = region or get_region(lon, lat)
     fname = filename_tpl.format(region=region, data='dir', res=res, ext='tif')
     fpath = f'{data_dir}/{fname}'

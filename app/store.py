@@ -21,3 +21,14 @@ try:
 except:
     redis = None
     logging.warning('Starting without REDIS')
+
+
+def get_stored_result(key):
+    if redis:
+        stored_value = redis.get(key)
+        if stored_value and stored_value != b'null':
+            return stored_value.decode()
+
+
+def store_result(key, value):
+    redis.set(key, value)

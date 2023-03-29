@@ -8,7 +8,7 @@ from fastapi.security import APIKeyHeader, APIKeyQuery
 
 from app.setup import initialize
 from app.model import Outlets
-from app.store import redis
+from app.store import redis, get_stored_result
 from app.helpers import EarthEngineMap
 from app.tasks import celery, delineate_point, delineate_from_features
 from app.lib.utils import make_catchment_key
@@ -74,13 +74,6 @@ def get_celery_worker_status():
     return i.ping()
 
 
-def get_stored_result(key):
-    if redis:
-        stored_value = redis.get(key)
-        if stored_value and stored_value != b'null':
-            return stored_value.decode()
-
-
 def get_result(key, fn, *args, **kwargs):
     result = get_stored_result(key)
     if result:
@@ -124,7 +117,7 @@ async def get_streamlines_raster(resolution: int, threshold: int, api_key: str =
 async def delineate(lat: float = None, lon: float = None, res: int = 30, remove_sinks: bool = False,
                     api_key: str = Security(get_api_key)):
     try:
-        key = make_catchment_key(lat, lon, res, 'd8', remove_sinks)
+        key = make_catchment_key(lat, lon, res, remove_sinks=remove_sinks)
         result = get_result(key, delineate_point, lon, lat, res=res, remove_sinks=remove_sinks)
         return result
     except:
