@@ -46,8 +46,9 @@ def shapes_to_geojson(lon, lat, shapes, region=None, remove_sinks=False, stringi
             "type": "Feature",
             "geometry": geometry,
             "properties": {
-                "value": value,
-                "outlet_coords": [lon, lat]
+                "name": f'Catchment {value}',
+                "outlet_lat": lat,
+                "outlet_lon": lon
             }
         }
         features.append(feature)
@@ -57,7 +58,8 @@ def shapes_to_geojson(lon, lat, shapes, region=None, remove_sinks=False, stringi
         'features': features,
         'properties': {
             'region': region,
-            'outlet_coords': [lon, lat]
+            'outlet_lat': lat,
+            'outlet_lon': lon
         }
     }
 
@@ -105,7 +107,11 @@ def delineate_point(lon, lat, res=30, region=None, remove_sinks=False):
 def delineations_to_subcatchments(delineations):
     catchments = {}
     for d in delineations:
-        coords = tuple(d['properties']['outlet_coords'])
+        props = d['properties']
+        if 'outlet_coords' in props:
+            coords = tuple(d['properties']['outlet_coords'])
+        else:
+            coords = (props['outlet_lon', props['outlet_lat']])
         geom = shapely.from_geojson(json.dumps(d))
         catchments[coords] = geom
 
@@ -132,10 +138,13 @@ def delineations_to_subcatchments(delineations):
         else:
             raise Exception(f'Unsupported geometry: {geom_type}')
 
+        lon, lat = point
         feature = {
             'type': 'Feature',
             'properties': {
-                'outlet_coords': list(point)
+                'name': f'Catchment above {point}',
+                'outlet_lat': lat,
+                'outlet_lon': lon
             },
             'geometry': json.loads(shapely.to_geojson(geometry)),
         }
