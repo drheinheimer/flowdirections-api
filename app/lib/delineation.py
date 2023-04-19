@@ -43,12 +43,12 @@ def shapes_to_geojson(lon, lat, shapes, region=None, remove_sinks=False, stringi
                 coordinates=[geometry['coordinates'][0]]
             )
         feature = {
-            "type": "Feature",
-            "geometry": geometry,
-            "properties": {
-                "name": f'Catchment {value}',
-                "outlet_lat": lat,
-                "outlet_lon": lon
+            'type': 'Feature',
+            'geometry': geometry,
+            'properties': {
+                'title': f'Catchment {value}',
+                'outlet_lat': lat,
+                'outlet_lon': lon
             }
         }
         features.append(feature)
@@ -142,7 +142,7 @@ def delineations_to_subcatchments(delineations):
         feature = {
             'type': 'Feature',
             'properties': {
-                'name': f'Catchment above {point}',
+                'title': f'Catchment above {point}',
                 'outlet_lat': lat,
                 'outlet_lon': lon
             },
