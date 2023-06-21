@@ -111,7 +111,7 @@ def delineations_to_subcatchments(delineations):
         if 'outlet_coords' in props:
             coords = tuple(d['properties']['outlet_coords'])
         else:
-            coords = (props['outlet_lon', props['outlet_lat']])
+            coords = (props['outlet_lon'], props['outlet_lat'])
         geom = shapely.from_geojson(json.dumps(d))
         catchments[coords] = geom
 
